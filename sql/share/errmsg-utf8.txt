@@ -7438,3 +7438,6 @@ ER_JSON_PATH_ARRAY
         eng "JSON path should end with an array identifier in argument %d to function '%s'"
 ER_JSON_ONE_OR_ALL
         eng "Argument 2 to function '%s' must be "one" or "all"."
+ER_WRONG_PARAMCOUNT_TO_CURSOR 42000 
+        eng "Incorrect parameter count to cursor '%-.192s'"
+        rus "Некорректное количество параметров для курсора '%-.192s'"
