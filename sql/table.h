@@ -1438,6 +1438,8 @@ public:
   bool validate_default_values_of_unset_fields(THD *thd) const;
 
   bool insert_all_rows_into(THD *thd, TABLE *dest, bool with_cleanup);
+
+  Field *find_field_by_name(const char *str) const;
 };
 
 
