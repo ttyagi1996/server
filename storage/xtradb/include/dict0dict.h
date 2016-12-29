@@ -1956,6 +1956,17 @@ dict_drop_zip_dict(
 	const char*	name,		/*!< in: zip_dict name */
 	ulint		name_len);	/*!< in: zip_dict name length*/
 
+/** Compare tablespace flags.
+@param[in]	flags		SYS_TABLES.flags
+@param[in]	mod_flags	Tablespace flags.
+@return true if flags match, false if not */
+UNIV_INLINE
+bool
+dict_compare_flags(
+	ulint	flags,
+	ulint	mod_flags)
+	MY_ATTRIBUTE((warn_unused_result));
+
 #ifndef UNIV_NONINL
 #include "dict0dict.ic"
 #endif

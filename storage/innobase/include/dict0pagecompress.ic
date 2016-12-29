@@ -1,6 +1,6 @@
 /*****************************************************************************
 
-Copyright (C) 2013 SkySQL Ab. All Rights Reserved.
+Copyright (C) 2013, 2016, MariaDB Corporation. All Rights Reserved.
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -28,11 +28,11 @@ Created 11/12/2013 Jan Lindström jan.lindstrom@skysql.com
 Verify that dictionary flags match tablespace flags
 @return	true if flags match, false if not */
 UNIV_INLINE
-ibool
+bool
 dict_tf_verify_flags(
 /*=================*/
 	ulint	table_flags,	/*!< in: dict_table_t::flags */
-	ulint   fsp_flags)      /*!< in: fil_space_t::flags  */
+	ulint   fsp_flags)	/*!< in: fil_space_t::flags  */
 {
 	ulint   table_unused = DICT_TF_GET_UNUSED(table_flags);
 	ulint   compact = DICT_TF_GET_COMPACT(table_flags);
@@ -45,69 +45,82 @@ dict_tf_verify_flags(
 	ulint	post_antelope = FSP_FLAGS_GET_POST_ANTELOPE(fsp_flags);
 	ulint	zip_ssize = FSP_FLAGS_GET_ZIP_SSIZE(fsp_flags);
 	ulint	fsp_atomic_blobs = FSP_FLAGS_HAS_ATOMIC_BLOBS(fsp_flags);
-	ulint	page_ssize = FSP_FLAGS_GET_PAGE_SSIZE(fsp_flags);
+	ulint	page_ssize = fsp_flags_get_page_size(fsp_flags);
 	ulint	fsp_unused = FSP_FLAGS_GET_UNUSED(fsp_flags);
         ulint   fsp_page_compression = FSP_FLAGS_GET_PAGE_COMPRESSION(fsp_flags);
 	ulint   fsp_page_compression_level = FSP_FLAGS_GET_PAGE_COMPRESSION_LEVEL(fsp_flags);
 	ulint   fsp_atomic_writes = FSP_FLAGS_GET_ATOMIC_WRITES(fsp_flags);
 
 	DBUG_EXECUTE_IF("dict_tf_verify_flags_failure",
-			return(ULINT_UNDEFINED););
+			return(false););
 
-	ut_a(!table_unused);
-	ut_a(!fsp_unused);
 	ut_a(page_ssize == 0 || page_ssize != 0); /* silence compiler */
 	ut_a(compact == 0 || compact == 1); /* silence compiler */
 	ut_a(data_dir == 0 || data_dir == 1); /* silence compiler */
-	ut_a(post_antelope == 0 || post_antelope == 1); /* silence compiler */
+	ut_a(post_antelope == 0 || post_antelope == 1); /* silence compiler
+							*/
+
+	if (table_unused || fsp_unused) {
+		ib_logf(IB_LOG_LEVEL_ERROR,
+			"Table flags has unused %ld"
+			" in the data dictionary"
+			" but the flags in file has unused %ld\n",
+			table_unused, fsp_unused);
+
+		return (false);
+	}
 
 	if (ssize != zip_ssize) {
-		fprintf(stderr,
-			"InnoDB: Error: table flags has zip_ssize %ld"
-			" in the data dictionary\n"
-			"InnoDB: but the flags in file has zip_ssize %ld\n",
+		ib_logf(IB_LOG_LEVEL_ERROR,
+			"Table flags has zip_ssize %ld"
+			" in the data dictionary"
+			" but the flags in file has zip_ssize %ld\n",
 			ssize, zip_ssize);
-		return (FALSE);
+		return (false);
 	}
+
 	if (atomic_blobs != fsp_atomic_blobs) {
-		fprintf(stderr,
-			"InnoDB: Error: table flags has atomic_blobs %ld"
-			" in the data dictionary\n"
-			"InnoDB: but the flags in file has atomic_blobs %ld\n",
+		ib_logf(IB_LOG_LEVEL_ERROR,
+			"Table flags has atomic_blobs %ld"
+			" in the data dictionary"
+			" but the flags in file has atomic_blobs %ld\n",
 			atomic_blobs, fsp_atomic_blobs);
 
-		return (FALSE);
+		return (false);
 	}
+
 	if (page_compression != fsp_page_compression) {
-		fprintf(stderr,
-			"InnoDB: Error: table flags has page_compression %ld"
-			" in the data dictionary\n"
-			"InnoDB: but the flags in file ahas page_compression %ld\n",
+		ib_logf(IB_LOG_LEVEL_ERROR,
+			"Table flags has page_compression %ld"
+			" in the data dictionary"
+			" but the flags in file ahas page_compression %ld\n",
 			page_compression, fsp_page_compression);
 
-		return (FALSE);
+		return (false);
 	}
+
 	if (page_compression_level != fsp_page_compression_level) {
-		fprintf(stderr,
-			"InnoDB: Error: table flags has page_compression_level %ld"
-			" in the data dictionary\n"
-			"InnoDB: but the flags in file has page_compression_level %ld\n",
+		ib_logf(IB_LOG_LEVEL_ERROR,
+
+			"Table flags has page_compression_level %ld"
+			" in the data dictionary "
+			" but the flags in file has page_compression_level %ld\n",
 			page_compression_level, fsp_page_compression_level);
 
-		return (FALSE);
+		return (false);
 	}
 
 	if (atomic_writes != fsp_atomic_writes) {
-		fprintf(stderr,
-			"InnoDB: Error: table flags has atomic writes %ld"
-			" in the data dictionary\n"
-			"InnoDB: but the flags in file has atomic_writes %ld\n",
+		ib_logf(IB_LOG_LEVEL_ERROR,
+			"Table flags has atomic writes %ld"
+			" in the data dictionary"
+			" but the flags in file has atomic_writes %ld\n",
 			atomic_writes, fsp_atomic_writes);
 
-		return (FALSE);
+		return (false);
 	}
 
-	return(TRUE);
+	return(true);
 }
 
 /********************************************************************//**

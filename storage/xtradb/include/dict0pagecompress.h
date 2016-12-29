@@ -60,12 +60,12 @@ dict_table_page_compression_level(
 Verify that dictionary flags match tablespace flags
 @return	true if flags match, false if not */
 UNIV_INLINE
-ibool
+bool
 dict_tf_verify_flags(
 /*=================*/
 	ulint	table_flags,	/*!< in: dict_table_t::flags */
 	ulint   fsp_flags)     /*!< in: fil_space_t::flags  */
-	__attribute__((const));
+	__attribute__((const, warn_unused_result));
 
 /********************************************************************//**
 Extract the atomic writes flag from table flags.

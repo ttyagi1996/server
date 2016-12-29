@@ -4208,3 +4208,141 @@ fsp_page_is_free_func(
 	return xdes_mtr_get_bit(
 		descr, XDES_FREE_BIT, page_no % FSP_EXTENT_SIZE, mtr);
 }
+
+/********************************************************************//**
+Verify that dictionary flags modified to tablespace flags
+and actual tablespace flags stored to FSP header match.
+@param[in]	dict_flags	dict_tf_to_fsp_flags(dict_table_t::flags)
+@param[in]	fsp_flags	Actual flags stored to FSP header in page 0
+@return	true if flags match, false if not */
+bool
+fsp_verify_flags(
+	ulint	dict_flags,
+	ulint   fsp_flags)
+{
+	ulint   dict_unused = FSP_FLAGS_GET_UNUSED(dict_flags);
+	ulint   dict_antelope = FSP_FLAGS_GET_POST_ANTELOPE(dict_flags);
+	ulint   dict_zssize = FSP_FLAGS_GET_ZIP_SSIZE(dict_flags);
+	ulint	dict_ablobs = FSP_FLAGS_HAS_ATOMIC_BLOBS(dict_flags);
+	ulint	dict_pssize = fsp_flags_get_page_size(dict_flags);
+	ulint   dict_data_dir = FSP_FLAGS_HAS_DATA_DIR(dict_flags);
+        ulint   dict_page_comp = FSP_FLAGS_GET_PAGE_COMPRESSION(dict_flags);
+	ulint   dict_page_comp_level = FSP_FLAGS_GET_PAGE_COMPRESSION_LEVEL(dict_flags);
+	ulint   dict_awrites = FSP_FLAGS_GET_ATOMIC_WRITES(dict_flags);
+
+	ulint	fsp_unused = FSP_FLAGS_GET_UNUSED(fsp_flags);
+	ulint	fsp_antelope = FSP_FLAGS_GET_POST_ANTELOPE(fsp_flags);
+	ulint	fsp_zssize = FSP_FLAGS_GET_ZIP_SSIZE(fsp_flags);
+	ulint	fsp_ablobs = FSP_FLAGS_HAS_ATOMIC_BLOBS(fsp_flags);
+	ulint	fsp_pssize = fsp_flags_get_page_size(fsp_flags);
+	ulint	fsp_data_dir = FSP_FLAGS_HAS_DATA_DIR(fsp_flags);
+	ulint   fsp_page_comp = FSP_FLAGS_GET_PAGE_COMPRESSION(fsp_flags);
+	ulint   fsp_page_comp_level = FSP_FLAGS_GET_PAGE_COMPRESSION_LEVEL(fsp_flags);
+	ulint   fsp_awrites = FSP_FLAGS_GET_ATOMIC_WRITES(fsp_flags);
+
+	DBUG_EXECUTE_IF("fsp_verify_flags_failure",
+			return(false););
+
+	if (dict_flags == fsp_flags) {
+		return (true);
+	}
+
+	if (dict_unused || fsp_unused) {
+		ib_logf(IB_LOG_LEVEL_FATAL,
+			"Dictionary flags %lu unused %lu or "
+			" tablespace flags %lu unused %lu corrupted\n",
+			dict_flags, dict_unused, fsp_flags, fsp_unused);
+		return (false);
+	}
+
+	if (dict_antelope != fsp_antelope) {
+		ib_logf(IB_LOG_LEVEL_ERROR,
+			"Dictionary flags %lu antelope %lu "
+			" but tablespace flags %lu antelope %lu.",
+			dict_flags, dict_antelope, fsp_flags, fsp_antelope);
+		return (false);
+	}
+
+	if (dict_zssize != fsp_zssize) {
+		ib_logf(IB_LOG_LEVEL_ERROR,
+			"Dictionary flags has zip_ssize %lu"
+			" but tablespace flags has zip_ssize %lu.",
+			dict_zssize, fsp_zssize);
+		return (false);
+	}
+
+	if (dict_ablobs != fsp_ablobs) {
+		ib_logf(IB_LOG_LEVEL_ERROR,
+			"Dictionary flags has atomic_blobs %lu"
+			" but tablespace flags has atomic_blobs %lu.",
+			dict_ablobs, fsp_ablobs);
+
+		return (false);
+	}
+
+	if (dict_pssize != fsp_pssize) {
+		ib_logf(IB_LOG_LEVEL_ERROR,
+			"Dictionary flags has page_size %lu"
+			" but tablespace flags has page_size %lu.",
+			dict_pssize, fsp_pssize);
+
+		return (false);
+	}
+
+	if (dict_data_dir != fsp_data_dir) {
+#ifdef UNIV_DEBUG
+		ib_logf(IB_LOG_LEVEL_INFO,
+			"Dictionary flags has data_dir %lu"
+			" but tablespace flags has data_dir %lu.",
+			dict_data_dir, fsp_data_dir);
+#endif /* UNIV_DEBUG */
+	}
+
+	/* If tablespace is created using MySQL 5.6 or MariaDB 10.0
+	or older below flags can't be there. */
+	if (!FSP_FLAGS_GET_UNUSED_OLD(dict_flags) &&
+	    !FSP_FLAGS_GET_UNUSED_OLD(fsp_flags)) {
+		return (true);
+	}
+
+	/* Now we need to determine what position rest of the flags
+	are. */
+
+	bool mariadb_format = FSP_FLAGS_GET_UNUSED_MARIADB101(fsp_flags);
+
+	if (!mariadb_format) {
+		/* Flags are in buggy MariaDB 10.1 old format, read them */
+		fsp_page_comp = FSP_FLAGS_GET_PAGE_COMPRESSION_MARIADB101(fsp_flags);
+		fsp_page_comp_level = FSP_FLAGS_GET_PAGE_COMPRESSION_LEVEL_MARIADB101(fsp_flags);
+		fsp_awrites = FSP_FLAGS_GET_ATOMIC_WRITES_MARIADB101(fsp_flags);
+	}
+
+	if (dict_page_comp != fsp_page_comp) {
+		ib_logf(IB_LOG_LEVEL_ERROR,
+			"Dictionary flags has page_compression %lu"
+			" but tablespace flags has page_compression %lu.",
+			dict_page_comp, fsp_page_comp);
+
+		return (false);
+	}
+
+	if (dict_page_comp_level != fsp_page_comp_level) {
+		ib_logf(IB_LOG_LEVEL_ERROR,
+			"Dictionary flags has page_compression_level %lu"
+			" but tablespace flags has page_compression_level %lu.",
+			dict_page_comp_level, fsp_page_comp_level);
+
+		return (false);
+	}
+
+	if (dict_awrites != fsp_awrites) {
+		ib_logf(IB_LOG_LEVEL_ERROR,
+			"Dictionary flags has atomic_writes %lu"
+			" but tablespace flags has atomic_writes %lu.",
+			dict_awrites, fsp_awrites);
+
+		return (false);
+	}
+
+	return(true);
+}

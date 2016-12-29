@@ -194,7 +194,28 @@ fsp_flags_get_page_size(
 	ulint	flags)	/*!< in: tablespace flags */
 {
 	ulint	page_size = 0;
-	ulint	ssize = FSP_FLAGS_GET_PAGE_SSIZE(flags);
+	bool	old_unused = !FSP_FLAGS_GET_UNUSED_OLD(flags);
+	bool	mariadb11_unused = !FSP_FLAGS_GET_UNUSED_MARIADB101(flags);
+	bool	mariadb_buggy_format = (!old_unused && mariadb11_unused);
+	ulint	ssize;
+
+	/** In MariaDB 10.1.20 or older MariaDB 10.1 PAGE_SSIZE
+	was stored after ATOMIC_WRITES not after ATOMIC_BLOBS
+	as in MySQL 5.6, MariaDB 10.0 or older. New tables
+	in MariDB 10.1.21 or newer store PAGE_SSIZE after ATOMIC_BLOBS.
+	*/
+	ssize = FSP_FLAGS_GET_PAGE_SSIZE(flags);
+
+	if (mariadb_buggy_format) {
+		ssize = FSP_FLAGS_GET_PAGE_SSIZE_MARIADB101(flags);
+	}
+
+	page_size = ((UNIV_ZIP_SIZE_MIN >> 1) << ssize);
+
+	if (page_size < UNIV_PAGE_SIZE_MIN ||
+	    page_size > UNIV_PAGE_SIZE_MAX) {
+		ssize = 0;
+	}
 
 	/* Convert from a 'log2 minus 9' to a page size in bytes. */
 	if (UNIV_UNLIKELY(ssize)) {

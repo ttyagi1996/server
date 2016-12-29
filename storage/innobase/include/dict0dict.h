@@ -1904,6 +1904,17 @@ dict_table_get_index_on_first_col(
 #endif /* !UNIV_HOTBACKUP */
 
 
+/** Compare tablespace flags.
+@param[in]	flags		SYS_TABLES.flags
+@param[in]	mod_flags	Tablespace flags.
+@return true if flags match, false if not */
+UNIV_INLINE
+bool
+dict_compare_flags(
+	ulint	flags,
+	ulint	mod_flags)
+	MY_ATTRIBUTE((warn_unused_result));
+
 #ifndef UNIV_NONINL
 #include "dict0dict.ic"
 #endif
