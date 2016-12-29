@@ -1272,7 +1272,9 @@ a
 1
 1
 drop table t1;
-set sql_mode = '';
+set character_set_connection=utf8;
+set sql_mode = 'NO_ENGINE_SUBSTITUTION';
+set character_set_connection=utf32;
 create table t1 (a varchar(17000) character set utf32);
 Warnings:
 Note	1246	Converting column 'a' from VARCHAR to TEXT

@@ -492,7 +492,11 @@ DROP TABLE t1;
 --echo #
 CREATE TABLE t1 (s1 VARCHAR(50) CHARACTER SET ucs2);
 INSERT INTO t1 VALUES (0xDF84);
+# Refer: MDEV-11685
+let $character_set_connection_saved=`select @@character_set_connection`;
+SET character_set_connection=utf8;
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+eval SET character_set_connection=$character_set_connection_saved;
 ALTER TABLE t1 MODIFY column s1 VARCHAR(50) CHARACTER SET utf16le;
 SET sql_mode = DEFAULT;
 SELECT HEX(s1) FROM t1;
@@ -503,7 +507,7 @@ DROP TABLE t1;
 --echo #
 CREATE TABLE t1 (s1 VARCHAR(5) CHARACTER SET ucs2, s2 VARCHAR(5) CHARACTER SET utf16le);
 INSERT INTO t1 (s1) VALUES (0xdf84);
-UPDATE t1 set s2 = s1;
+UPDATE IGNORE t1 set s2 = s1;
 SELECT HEX(s2) FROM t1;
 DROP TABLE t1;
 
@@ -605,7 +609,7 @@ DROP TABLE t1;
 --echo #
 CREATE TABLE t1 (a int);
 INSERT INTO t1 VALUES ('-1234.1e2');
-INSERT INTO t1 VALUES ('-1234.1e2xxxx');
+INSERT IGNORE INTO t1 VALUES ('-1234.1e2xxxx');
 INSERT INTO t1 VALUES ('-1234.1e2    ');
 INSERT INTO t1 VALUES ('123');
 INSERT INTO t1 VALUES ('-124');
@@ -631,7 +635,7 @@ DROP TABLE t1;
 --echo #
 CREATE TABLE t1 (a int);
 INSERT INTO t1 VALUES ('1 ');
-INSERT INTO t1 VALUES ('1 x');
+INSERT IGNORE INTO t1 VALUES ('1 x');
 SELECT * FROM t1;
 DROP TABLE t1;
 
@@ -639,7 +643,14 @@ DROP TABLE t1;
 --echo #
 --echo # Testing auto-conversion to TEXT
 --echo #
+
+# Refer: MDEV-11685
+let $character_set_connection_saved=`select @@character_set_connection`;
+SET character_set_connection=utf8;
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+eval SET character_set_connection=$character_set_connection_saved;
 CREATE TABLE t1 (a VARCHAR(17000) CHARACTER SET utf16le);
+SET sql_mode = DEFAULT;
 SHOW CREATE TABLE t1;
 DROP TABLE t1;
 
