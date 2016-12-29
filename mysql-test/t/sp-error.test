@@ -2734,7 +2734,7 @@ DROP PROCEDURE p1;
 --echo #
 --echo # Bug#5889: Exit handler for a warning doesn't hide the warning in trigger
 --echo #
-
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 CREATE TABLE t1(a INT, b INT);
 INSERT INTO t1 VALUES (1, 2);
 
@@ -2758,6 +2758,7 @@ SELECT * FROM t1;
 
 DROP TRIGGER t1_bu;
 DROP TABLE t1;
+SET sql_mode = DEFAULT;
 
 --echo #
 --echo # Bug#9857: Stored procedures: handler for sqlwarning ignored
@@ -2811,13 +2812,13 @@ CREATE TABLE t2(a SMALLINT, b SMALLINT, c SMALLINT,
                 d SMALLINT, e SMALLINT, f SMALLINT);
 
 CREATE TRIGGER t1_bi BEFORE INSERT ON t1 FOR EACH ROW
-  INSERT INTO t2(a, b, c) VALUES(99999, 99999, 99999);
+  INSERT IGNORE INTO t2(a, b, c) VALUES(99999, 99999, 99999);
 
 CREATE TRIGGER t1_ai AFTER INSERT ON t1 FOR EACH ROW
-  INSERT INTO t2(d, e, f) VALUES(99999, 99999, 99999);
+  INSERT IGNORE INTO t2(d, e, f) VALUES(99999, 99999, 99999);
 
 CREATE PROCEDURE p1()
-  INSERT INTO t1 VALUES(99999, 99999, 99999);
+  INSERT IGNORE INTO t1 VALUES(99999, 99999, 99999);
 
 # What happened before the patch was:
 #  - INSERT INTO t1 added 3 warnings about overflow in 'x', 'y' and 'z' columns;

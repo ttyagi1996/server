@@ -182,6 +182,9 @@ drop table t1,t2;
 # Bug mdev-3938: INSERT DELAYED for a table with virtual columns
 #
 
+#
+# Refer - MDEV-11527: Virtual columns do not get along well with NO_ZERO_DATE
+#
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 CREATE TABLE t1 (
  ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -268,6 +271,7 @@ show columns from t1;
 --replace_column 8 #
 show full columns from t1;
 INSERT INTO `test`.`t1`(`a`,`b`,`c`,`d`) VALUES ( '1','a',NULL,NULL);
+UPDATE IGNORE `test`.`t1` SET `d`='b' WHERE `a`='1' AND `b`='a' AND `c`='1' AND  `d`='a';
 INSERT IGNORE INTO `test`.`t1`(`a`,`b`,`c`,`d`) VALUES ( '1','a',NULL,'a');
 set sql_mode='strict_all_tables';
 --error ER_WARNING_NON_DEFAULT_VALUE_FOR_VIRTUAL_COLUMN

@@ -1256,6 +1256,7 @@ set sql_mode = default;
 #  Bug#14146: CHAR(...USING ...) and CONVERT(CHAR(...) USING...)
 #             produce different results
 #
+set sql_mode = '';
 set names utf8;
 # correct value
 select hex(char(1 using utf8));
@@ -1272,6 +1273,7 @@ select char(195 using utf8);
 select char(196 using utf8);
 select char(2557 using utf8);
 select convert(char(0xff,0x8f) using utf8);
+set sql_mode = default;
 
 #
 # Check convert + char + using
@@ -1439,7 +1441,7 @@ select hex(_utf8 X'616263FF');
 select hex(_utf8 B'001111111111');
 --error ER_INVALID_CHARACTER_STRING
 select (_utf8 X'616263FF');
-set sql_mode=default;
+set sql_mode='';
 select hex(char(0xFF using utf8));
 select hex(convert(0xFF using utf8));
 --error ER_INVALID_CHARACTER_STRING
@@ -1450,6 +1452,7 @@ select hex(_utf8 X'616263FF');
 select hex(_utf8 B'001111111111');
 --error ER_INVALID_CHARACTER_STRING
 select (_utf8 X'616263FF');
+set sql_mode=default;
 
 --echo #
 --echo # Bug#44131 Binary-mode "order by" returns records in incorrect order for UTF-8 strings
@@ -1612,8 +1615,9 @@ EXPLAIN EXTENDED SELECT 'abcdÁÂÃÄÅ', _latin1'abcdÁÂÃÄÅ', _utf8'abcdÁ�
 --echo #
 --echo # Bug#11750518 41090: ORDER BY TRUNCATES GROUP_CONCAT RESULT
 --echo #
-
 SET NAMES utf8;
+SET group_concat_max_len = 1024;
+
 SELECT id, CHAR_LENGTH(GROUP_CONCAT(body)) AS l
 FROM (SELECT 'a' AS id, REPEAT('foo bar', 100) AS body
 UNION ALL
@@ -1625,6 +1629,8 @@ SELECT id, CHAR_LENGTH(GROUP_CONCAT(body)) AS l
 FROM (SELECT 'a' AS id, REPEAT('foo bar', 100) AS body
 UNION ALL
 SELECT 'a' AS id, REPEAT('bla bla', 100) AS body) t1;
+
+SET group_concat_max_len = DEFAULT;
 
 --echo #
 --echo # MDEV-7814 Assertion `args[0]->fixed' fails in Item_func_conv_charset::Item_func_conv_charset
