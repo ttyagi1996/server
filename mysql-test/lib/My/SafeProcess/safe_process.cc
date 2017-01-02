@@ -96,7 +96,7 @@ static void kill_child(bool was_killed)
   message("Killing child: %d", child_pid);
   // Terminate whole process group
   if (! was_killed)
-    kill(-child_pid, SIGKILL);
+    kill(-child_pid, SIGABRT);
 
   pid_t ret_pid= waitpid(child_pid, &status, 0);
   if (ret_pid == child_pid)

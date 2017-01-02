@@ -649,40 +649,39 @@ sub run_test_server ($$$) {
 	      mtr_report(" - saving '$worker_savedir/' to '$savedir/'");
 	      rename($worker_savedir, $savedir);
 	      # Move any core files from e.g. mysqltest
-	      foreach my $coref (glob("core*"), glob("*.dmp"))
+	      foreach my $coref (glob("core"), glob("core*"), glob("*.dmp"))
 	      {
 		mtr_report(" - found '$coref', moving it to '$savedir'");
                 move($coref, $savedir);
               }
-	      if ($opt_max_save_core > 0) {
-		# Limit number of core files saved
-		find({ no_chdir => 1,
+		  find({ no_chdir => 1,
 		       wanted => sub {
 			 my $core_file= $File::Find::name;
 			 my $core_name= basename($core_file);
 
 			 # Name beginning with core, not ending in .gz
 			 if (($core_name =~ /^core/ and $core_name !~ /\.gz$/)
-			     or (IS_WINDOWS and $core_name =~ /\.dmp$/)){
+			     or (IS_WINDOWS and $core_name =~ /\.dmp$/))
+             {
                                                        # Ending with .dmp
 			   mtr_report(" - found '$core_name'",
 				      "($num_saved_cores/$opt_max_save_core)");
 
 			   My::CoreDump->show($core_file, $exe_mysqld, $opt_parallel);
 
-			   if ($num_saved_cores >= $opt_max_save_core) {
+			   if ($opt_max_save_core and $num_saved_cores >= $opt_max_save_core) {
 			     mtr_report(" - deleting it, already saved",
 					"$opt_max_save_core");
 			     unlink("$core_file");
 			   } else {
-			     mtr_compress_file($core_file) unless @opt_cases;
+                 mtr_report(" - compressing and moving it to '$savedir'");
+			     move(mtr_compress_file($core_file), $savedir) unless @opt_cases;
 			   }
 			   ++$num_saved_cores;
-			 }
-		       }
-		     },
-		     $savedir);
-	      }
+             }
+          }
+          },
+          $opt_vardir);
 	    }
 	    resfile_print_test();
 	    $num_saved_datadir++;
@@ -770,6 +769,33 @@ sub run_test_server ($$$) {
           my $report= $fake_test->{'warnings'};
           mtr_report("***Warnings generated in error logs during shutdown ".
                      "after running tests: $test_list\n\n$report");
+
+		find({ no_chdir => 1,
+		       wanted => sub {
+			 my $core_file= $File::Find::name;
+			 my $core_name= basename($core_file);
+
+			 # Name beginning with core, not ending in .gz
+			 if (($core_name =~ /^core/ and $core_name !~ /\.gz$/)
+			     or (IS_WINDOWS and $core_name =~ /\.dmp$/)){
+			   mtr_report(" - found '$core_name'",
+				      "($num_saved_cores/$opt_max_save_core)");
+
+			   My::CoreDump->show($core_file, $exe_mysqld, $opt_parallel);
+
+			   if ($num_saved_cores >= $opt_max_save_core) {
+			     mtr_report(" - deleting it, already saved",
+					"$opt_max_save_core");
+			     unlink("$core_file");
+			   } else {
+			     mtr_compress_file($core_file) unless @opt_cases;
+			   }
+			   ++$num_saved_cores;
+			 }
+		       }
+		     },
+		     $opt_vardir);
+
           $test_failure= 1;
           if ( !$opt_force ) {
             # Test failure due to warnings, force is off

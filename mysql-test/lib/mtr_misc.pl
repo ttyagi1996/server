@@ -209,14 +209,16 @@ sub mtr_exe_exists (@) {
 sub mtr_compress_file ($) {
   my ($filename)= @_;
 
+  my $compressed_file_name;
   mtr_error ("File to compress not found: $filename") unless -f $filename;
 
   my $did_compress= 0;
 
   if (IS_WINDOWS)
   {
+    $compressed_file_name= "$filename.zip";
     # Capture stderr
-    my $ziperr= `zip $filename.zip $filename 2>&1`;
+    my $ziperr= `zip $compressed_file_name $filename 2>&1`;
     if ($?) {
       print "$ziperr\n" if $ziperr !~ /recognized as an internal or external/;
     } else {
@@ -226,6 +228,7 @@ sub mtr_compress_file ($) {
   }
   else
   {
+    $compressed_file_name= "$filename.gz";
     my $gzres= system("gzip $filename");
     $did_compress= ! $gzres;
     if ($gzres && $gzres != -1) {
@@ -233,6 +236,7 @@ sub mtr_compress_file ($) {
     }
   }
   mtr_print("Compressed file $filename") if $did_compress;
+  return ($did_compress ? $compressed_file_name : $filename);
 }
 
 
