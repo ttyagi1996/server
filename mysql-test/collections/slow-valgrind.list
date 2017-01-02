@@ -1,0 +1,8 @@
+funcs_2.innodb_charset : The test is too slow with high-parallel valgrind
+main.selectivity_innodb : The test is too slow with high-parallel valgrind
+main.index_merge_innodb : The test is too slow with high-parallel valgrind
+main.stat_tables_innodb : The test is too slow with high-parallel valgrind
+main.stat_tables_par_innodb : The test is too slow with high-parallel valgrind
+main.innodb_ext_key : The test is too slow with high-parallel valgrind
+main.range_vs_index_merge_innodb : The test is too slow with high-parallel valgrind
+main.stat_tables_disabled : The test is too slow with high-parallel valgrind
