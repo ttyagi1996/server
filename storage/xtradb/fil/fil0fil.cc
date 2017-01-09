@@ -7621,7 +7621,9 @@ UNIV_INTERN
 fil_space_crypt_t*
 fil_space_get_crypt_data(
 /*=====================*/
-	ulint id)	/*!< in: space id */
+	ulint	id,		/*!< in: space id */
+	bool	reread_page0)	/*!< in: true if we should reread
+				page 0. */
 {
 	fil_space_t*	space;
 	fil_space_crypt_t* crypt_data = NULL;
@@ -7635,8 +7637,12 @@ fil_space_get_crypt_data(
 	mutex_exit(&fil_system->mutex);
 
 	if (space != NULL) {
-		/* If we have not yet read the page0
-		of this tablespace we will do it now. */
+		/* If we have not yet read the page0 of this tablespace we
+		will do it now and if we hare requested reread we force it. */
+		if (!space->crypt_data && reread_page0) {
+			space->page_0_crypt_read = false;
+		}
+
 		if (!space->crypt_data && !space->page_0_crypt_read) {
 			ulint space_id = space->id;
 			fil_node_t*	node;
@@ -7646,39 +7652,42 @@ fil_space_get_crypt_data(
 
 			byte *buf = static_cast<byte*>(ut_malloc(2 * UNIV_PAGE_SIZE));
 			byte *page = static_cast<byte*>(ut_align(buf, UNIV_PAGE_SIZE));
-			fil_read(true, space_id, 0, 0, 0, UNIV_PAGE_SIZE, page,
+
+			dberr_t err = fil_read(true, space_id, 0, 0, 0, UNIV_PAGE_SIZE, page,
 				NULL, NULL);
-			ulint flags = fsp_header_get_flags(page);
-			ulint offset = fsp_header_get_crypt_offset(
-				fsp_flags_get_zip_size(flags), NULL);
-			space->crypt_data = fil_space_read_crypt_data(space_id, page, offset);
-			ut_free(buf);
+
+			if (err == DB_SUCCESS) {
+				ulint flags = fsp_header_get_flags(page);
+				ulint offset = fsp_header_get_crypt_offset(
+					fsp_flags_get_zip_size(flags), NULL);
+				space->crypt_data = fil_space_read_crypt_data(space_id, page, offset);
+				ut_free(buf);
 
 #ifdef UNIV_DEBUG
-			ib_logf(IB_LOG_LEVEL_INFO,
-				"Read page 0 from tablespace for space %lu name %s key_id %u encryption %d handle %d.",
-				space_id,
-				space->name,
-				space->crypt_data ? space->crypt_data->key_id : 0,
-				space->crypt_data ? space->crypt_data->encryption : 0,
-				node->handle);
+				ib_logf(IB_LOG_LEVEL_INFO,
+					"Read page 0 from tablespace for space %lu name %s key_id %u encryption %d handle %d.",
+					space_id,
+					space->name,
+					space->crypt_data ? space->crypt_data->key_id : 0,
+					space->crypt_data ? space->crypt_data->encryption : 0,
+					node->handle);
 #endif
 
-			ut_a(space->id == space_id);
+				ut_a(space->id == space_id);
 
-			space->page_0_crypt_read = true;
+				space->page_0_crypt_read = true;
+			} else {
+				ib_logf(IB_LOG_LEVEL_WARN,
+					"Reading page 0 from space %lu name %s returned error=%d\n",
+					space->id,
+					space->name,
+					err);
+				space->page_0_crypt_read = false;
+			}
 		}
 
 		crypt_data = space->crypt_data;
 
-		if (!space->page_0_crypt_read && !IS_XTRABACKUP()) {
-			ib_logf(IB_LOG_LEVEL_WARN,
-				"Space %lu name %s contains encryption %d information for key_id %u but page0 is not read.",
-				space->id,
-				space->name,
-				space->crypt_data ? space->crypt_data->encryption : 0,
-				space->crypt_data ? space->crypt_data->key_id : 0);
-		}
 	}
 
 	return(crypt_data);

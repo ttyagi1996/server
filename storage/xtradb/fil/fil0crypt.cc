@@ -36,6 +36,7 @@ Modified           Jan Lindström jan.lindstrom@mariadb.com
 #include "btr0scrub.h"
 #include "fsp0fsp.h"
 #include "fil0pagecompress.h"
+#include "buf0buf.h"
 #include "ha_prototypes.h" // IB_LOG_
 
 #include <my_crypt.h>
@@ -937,82 +938,69 @@ fil_crypt_calculate_checksum(
 Verify checksum for a page (iff it's encrypted)
 NOTE: currently this function can only be run in single threaded mode
 as it modifies srv_checksum_algorithm (temporarily)
+@param[in]	page		page to verify
+@param[in]	zip_size	zip_size or 0
 @return true if page is encrypted AND OK, false otherwise */
 UNIV_INTERN
 bool
 fil_space_verify_crypt_checksum(
 /*============================*/
-	const byte* 	src_frame,	/*!< in: page the verify */
-	ulint		zip_size)  	/*!< in: compressed size if
-					row_format compressed */
+	const byte* 	page,
+	ulint		zip_size)
 {
-	ulint page_size = zip_size ? zip_size : UNIV_PAGE_SIZE;
-
 	// key version
-	uint key_version = mach_read_from_4(
-		src_frame + FIL_PAGE_FILE_FLUSH_LSN_OR_KEY_VERSION);
+	uint key_version = mach_read_from_4(page+ FIL_PAGE_FILE_FLUSH_LSN_OR_KEY_VERSION);
 
+	/* If page is not encrypted, return false */
 	if (key_version == 0) {
-		return false; // unencrypted page
+		return false;
 	}
 
-	/* "trick" the normal checksum routines by storing the post-encryption
-	* checksum into the normal checksum field allowing for reuse of
-	* the normal routines */
-
-	// post encryption checksum
-	ib_uint32_t stored_post_encryption = mach_read_from_4(
-		src_frame + FIL_PAGE_FILE_FLUSH_LSN_OR_KEY_VERSION + 4);
-
-	// save pre encryption checksum for restore in end of this function
-	ib_uint32_t stored_pre_encryption = mach_read_from_4(
-		src_frame + FIL_PAGE_SPACE_OR_CHKSUM);
-
-	ib_uint32_t checksum_field2 = mach_read_from_4(
-		src_frame + page_size - FIL_PAGE_END_LSN_OLD_CHKSUM);
-
-	/** prepare frame for usage of normal checksum routines */
-	mach_write_to_4(const_cast<byte*>(src_frame) + FIL_PAGE_SPACE_OR_CHKSUM,
-			stored_post_encryption);
-
-	/* NOTE: this function is (currently) only run when restoring
-	* dblwr-buffer, server is single threaded so it's safe to modify
-	* srv_checksum_algorithm */
-	srv_checksum_algorithm_t save_checksum_algorithm =
-		(srv_checksum_algorithm_t)srv_checksum_algorithm;
-
-	if (zip_size == 0 &&
-	    (save_checksum_algorithm == SRV_CHECKSUM_ALGORITHM_STRICT_INNODB ||
-	     save_checksum_algorithm == SRV_CHECKSUM_ALGORITHM_INNODB)) {
-		/* handle ALGORITHM_INNODB specially,
-		* "downgrade" to ALGORITHM_INNODB and store BUF_NO_CHECKSUM_MAGIC
-		* checksum_field2 is sort of pointless anyway...
-		*/
-		srv_checksum_algorithm = SRV_CHECKSUM_ALGORITHM_INNODB;
-		mach_write_to_4(const_cast<byte*>(src_frame) +
-				page_size - FIL_PAGE_END_LSN_OLD_CHKSUM,
-				BUF_NO_CHECKSUM_MAGIC);
+	/* If no checksum is used, can't continue checking. */
+	if (srv_checksum_algorithm == SRV_CHECKSUM_ALGORITHM_NONE) {
+		return(true);
 	}
 
-	/* verify checksums */
-	ibool corrupted = buf_page_is_corrupted(false, src_frame, zip_size);
+	/* Read stored post encryption checksum. */
+	ib_uint32_t checksum = mach_read_from_4(
+		page + FIL_PAGE_FILE_FLUSH_LSN_OR_KEY_VERSION + 4);
 
-	/** restore frame & algorithm */
-	srv_checksum_algorithm = save_checksum_algorithm;
-
-	mach_write_to_4(const_cast<byte*>(src_frame) +
-			FIL_PAGE_SPACE_OR_CHKSUM,
-			stored_pre_encryption);
-
-	mach_write_to_4(const_cast<byte*>(src_frame) +
-			page_size - FIL_PAGE_END_LSN_OLD_CHKSUM,
-			checksum_field2);
-
-	if (!corrupted) {
-		return true;  // page was encrypted and checksum matched
-	} else {
-		return false; // page was encrypted but checksum didn't match
+	/* Declare empty pages non-corrupted */
+	if (checksum == 0
+	    && *reinterpret_cast<const ib_uint64_t*>(page + FIL_PAGE_LSN) == 0) {
+		return (true);
 	}
+
+	/* Compressed and encrypted pages do not have checksum. Assume not
+	corrupted. */
+	if (mach_read_from_2(page+FIL_PAGE_TYPE) == FIL_PAGE_PAGE_COMPRESSED_ENCRYPTED) {
+		return (true);
+	}
+
+	/* Compressed pages use different checksum method. We first store
+	the post encryption checksum on checksum location and after function
+	restore the original. */
+	if (zip_size) {
+		ib_uint32_t old = static_cast<ib_uint32_t>(mach_read_from_4(
+				(byte *)page + FIL_PAGE_SPACE_OR_CHKSUM));
+		mach_write_to_4((byte *)page + FIL_PAGE_SPACE_OR_CHKSUM, checksum);
+
+		bool valid = page_zip_verify_checksum(page, zip_size);
+
+		mach_write_to_4((byte *)page + FIL_PAGE_SPACE_OR_CHKSUM, old);
+
+		return (valid);
+	}
+
+	/* If stored checksum matches one of the calculated checksums
+	page is not corrupted. */
+	if (buf_page_is_checksum_valid_crc32(page,checksum,checksum)
+	    || buf_page_is_checksum_valid_none(page,checksum,checksum)
+	    || buf_page_is_checksum_valid_innodb(page,checksum, checksum)) {
+		return(true);
+	}
+
+	return(false);
 }
 
 /***********************************************************************/

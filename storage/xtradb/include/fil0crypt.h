@@ -253,7 +253,10 @@ UNIV_INTERN
 fil_space_crypt_t *
 fil_space_get_crypt_data(
 /*=====================*/
-	ulint space); /*!< in: tablespace id */
+	ulint		space, 			/*!< in: tablespace id */
+	bool		reread_page0=false)	/*!< in: true if we should
+						reread page 0. */
+	__attribute__((warn_unused_result));
 
 /*********************************************************************
 Set crypt data for a space*/
@@ -369,13 +372,16 @@ fil_space_decrypt(
 fil_space_verify_crypt_checksum
 NOTE: currently this function can only be run in single threaded mode
 as it modifies srv_checksum_algorithm (temporarily)
+@param[in]	src_frame	page to verify
+@param[in]	zip_size	zip_size or 0
 @return true if page is encrypted AND OK, false otherwise */
 UNIV_INTERN
 bool
 fil_space_verify_crypt_checksum(
 /*============================*/
-	const byte* src_frame,/*!< in: page frame */
-	ulint zip_size);      /*!< in: size of data to encrypt */
+	const byte*	src_frame,
+	ulint		zip_size)
+	__attribute__((warn_unused_result));
 
 /*********************************************************************
 Init threads for key rotation */

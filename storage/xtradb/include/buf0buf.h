@@ -639,6 +639,43 @@ buf_block_unfix(
 #else /* !UNIV_HOTBACKUP */
 # define buf_block_modify_clock_inc(block) ((void) 0)
 #endif /* !UNIV_HOTBACKUP */
+
+/** Checks if the page is in crc32 checksum format.
+@param[in]	read_buf	database page
+@param[in]	checksum_field1	new checksum field
+@param[in]	checksum_field2	old checksum field
+@return true if the page is in crc32 checksum format */
+bool
+buf_page_is_checksum_valid_crc32(
+	const byte*	read_buf,
+	ulint		checksum_field1,
+	ulint		checksum_field2)
+	MY_ATTRIBUTE((nonnull, warn_unused_result));
+
+/** Checks if the page is in innodb checksum format.
+@param[in]	read_buf	database page
+@param[in]	checksum_field1	new checksum field
+@param[in]	checksum_field2	old checksum field
+@return true if the page is in innodb checksum format */
+bool
+buf_page_is_checksum_valid_innodb(
+	const byte*	read_buf,
+	ulint		checksum_field1,
+	ulint		checksum_field2)
+	MY_ATTRIBUTE((nonnull, warn_unused_result));
+
+/** Checks if the page is in none checksum format.
+@param[in]	read_buf	database page
+@param[in]	checksum_field1	new checksum field
+@param[in]	checksum_field2	old checksum field
+@return true if the page is in none checksum format */
+bool
+buf_page_is_checksum_valid_none(
+	const byte*	read_buf,
+	ulint		checksum_field1,
+	ulint		checksum_field2)
+	MY_ATTRIBUTE((nonnull, warn_unused_result));
+
 /********************************************************************//**
 Checks if a page is corrupt.
 @return	TRUE if corrupted */
@@ -649,8 +686,10 @@ buf_page_is_corrupted(
 	bool		check_lsn,	/*!< in: true if we need to check the
 					and complain about the LSN */
 	const byte*	read_buf,	/*!< in: a database page */
-	ulint		zip_size)	/*!< in: size of compressed page;
+	ulint		zip_size,	/*!< in: size of compressed page;
 					0 for uncompressed pages */
+	bool		reread_page0=false) /*!< in: true if we should
+					    reread page 0, false if not. */
 	MY_ATTRIBUTE((nonnull, warn_unused_result));
 /********************************************************************//**
 Checks if a page is all zeroes.

@@ -268,6 +268,17 @@ xb_fil_cur_open(
 	return(XB_FIL_CUR_SUCCESS);
 }
 
+
+/**********************************************************************//**
+Verify a compressed page's checksum.
+@return	TRUE if the stored checksum is valid according to the value of
+innodb_checksum_algorithm */
+ibool
+page_zip_verify_checksum(
+/*=====================*/
+	const void*	data,	/*!< in: compressed page */
+	ulint		size);	/*!< in: size of compressed page */
+
 /************************************************************************
 Reads and verifies the next block of pages from the source
 file. Positions the cursor after the last read non-corrupted page.
@@ -349,7 +360,7 @@ read_retry:
 		bool checksum_ok = fil_space_verify_crypt_checksum(page, cursor->zip_size);
 
 		if (!checksum_ok &&
-		    buf_page_is_corrupted(TRUE, page, cursor->zip_size)) {
+			buf_page_is_corrupted(TRUE, page, cursor->zip_size, true)) {
 
 			ib_int64_t page_no = cursor->buf_page_no + i;
 

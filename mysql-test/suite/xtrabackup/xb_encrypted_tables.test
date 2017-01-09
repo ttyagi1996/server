@@ -1,0 +1,59 @@
+create database database1;
+create database database2;
+create database test1;
+create database test2;
+create database thisisadatabase;
+create database testdatabase;
+create table database1.thisisatable (a int primary key) engine=InnoDB;
+create table database1.t (a int primary key) engine=InnoDB;
+create table database1.t1 (a int primary key) engine=InnoDB;
+create table database1.t2 (a int primary key) engine=InnoDB;
+create table database1.ancor (a int primary key) engine=InnoDB;
+create table database1.glow (a int primary key) engine=InnoDB;
+create table database2.thisisatable (a int primary key) engine=InnoDB;
+create table database2.t (a int primary key) engine=InnoDB;
+create table database2.t1 (a int primary key) engine=InnoDB;
+create table database2.t2 (a int primary key) engine=InnoDB;
+create table database2.ancor (a int primary key) engine=InnoDB;
+create table database2.glow (a int primary key) engine=InnoDB;
+create table test1.thisisatable (a int primary key) engine=InnoDB;
+create table test1.t (a int primary key) engine=InnoDB;
+create table test1.t1 (a int primary key) engine=InnoDB;
+create table test1.t2 (a int primary key) engine=InnoDB;
+create table test1.ancor (a int primary key) engine=InnoDB;
+create table test1.glow (a int primary key) engine=InnoDB;
+create table test2.thisisatable (a int primary key) engine=InnoDB;
+create table test2.t (a int primary key) engine=InnoDB;
+create table test2.t1 (a int primary key) engine=InnoDB;
+create table test2.t2 (a int primary key) engine=InnoDB;
+create table test2.ancor (a int primary key) engine=InnoDB;
+create table test2.glow (a int primary key) engine=InnoDB;
+create table thisisadatabase.thisisatable (a int primary key) engine=InnoDB;
+create table thisisadatabase.t (a int primary key) engine=InnoDB;
+create table thisisadatabase.t1 (a int primary key) engine=InnoDB;
+create table thisisadatabase.t2 (a int primary key) engine=InnoDB;
+create table thisisadatabase.ancor (a int primary key) engine=InnoDB;
+create table thisisadatabase.glow (a int primary key) engine=InnoDB;
+create table testdatabase.thisisatable (a int primary key) engine=InnoDB;
+create table testdatabase.t (a int primary key) engine=InnoDB;
+create table testdatabase.t1 (a int primary key) engine=InnoDB;
+create table testdatabase.t2 (a int primary key) engine=InnoDB;
+create table testdatabase.ancor (a int primary key) engine=InnoDB;
+create table testdatabase.glow (a int primary key) engine=InnoDB;
+
+let $MYSQLD_DATADIR= `select @@datadir`;
+
+echo # xtrabackup backup;
+# disable_result_log
+let $targetdir=$MYSQLTEST_VARDIR/tmp/backup;
+exec $XTRABACKUP --defaults-file=$MYSQLTEST_VARDIR/my.cnf --no-timestamp --tables=dat.base,test1.t,test1.a --backup --target-dir=$targetdir --datadir=$MYSQLD_DATADIR;
+rmdir $targetdir;
+
+use test;
+drop database database1;
+drop database database2;
+drop database test1;
+drop database test2;
+drop database thisisadatabase;
+drop database testdatabase;
+

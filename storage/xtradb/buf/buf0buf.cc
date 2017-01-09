@@ -33,6 +33,8 @@ Created 11/5/1995 Heikki Tuuri
 
 #include "buf0buf.h"
 
+//#define UNIV_DEBUG_LEVEL2 1
+
 #ifdef UNIV_NONINL
 #include "buf0buf.ic"
 #endif
@@ -600,7 +602,6 @@ buf_page_is_zeroes(
 @param[in]	checksum_field1	new checksum field
 @param[in]	checksum_field2	old checksum field
 @return true if the page is in crc32 checksum format */
-UNIV_INLINE
 bool
 buf_page_is_checksum_valid_crc32(
 	const byte*	read_buf,
@@ -625,7 +626,6 @@ buf_page_is_checksum_valid_crc32(
 @param[in]	checksum_field1	new checksum field
 @param[in]	checksum_field2	old checksum field
 @return true if the page is in innodb checksum format */
-UNIV_INLINE
 bool
 buf_page_is_checksum_valid_innodb(
 	const byte*	read_buf,
@@ -679,7 +679,6 @@ buf_page_is_checksum_valid_innodb(
 @param[in]	checksum_field1	new checksum field
 @param[in]	checksum_field2	old checksum field
 @return true if the page is in none checksum format */
-UNIV_INLINE
 bool
 buf_page_is_checksum_valid_none(
 	const byte*	read_buf,
@@ -687,7 +686,7 @@ buf_page_is_checksum_valid_none(
 	ulint		checksum_field2)
 {
 #ifdef UNIV_DEBUG_LEVEL2
-	if (!(checksum_field1 == checksum_field2 || checksum_field1 == BUF_NO_CHECKSUM_MAGIC)) {
+	if (!(checksum_field1 == checksum_field2 && checksum_field1 == BUF_NO_CHECKSUM_MAGIC)) {
 		ib_logf(IB_LOG_LEVEL_INFO,
 			"Page checksum none not valid field1 %lu field2 %lu crc32 %lu lsn %lu.",
 			checksum_field1, checksum_field2, BUF_NO_CHECKSUM_MAGIC,
@@ -710,8 +709,10 @@ buf_page_is_corrupted(
 	bool		check_lsn,	/*!< in: true if we need to check
 					and complain about the LSN */
 	const byte*	read_buf,	/*!< in: a database page */
-	ulint		zip_size)	/*!< in: size of compressed page;
+	ulint		zip_size,	/*!< in: size of compressed page;
 					0 for uncompressed pages */
+	bool		reread_page0)	/*!< in: true if we should reread
+					page 0 */
 {
 	ulint		checksum_field1;
 	ulint		checksum_field2;
@@ -721,7 +722,7 @@ buf_page_is_corrupted(
 	bool page_encrypted = false;
 
 	if (fil_page_is_encrypted(read_buf)) {
-		fil_space_crypt_t* crypt_data = fil_space_get_crypt_data(space_id);
+		fil_space_crypt_t* crypt_data = fil_space_get_crypt_data(space_id, reread_page0);
 
 		if (crypt_data &&
 		    crypt_data->type != CRYPT_SCHEME_UNENCRYPTED) {
@@ -729,6 +730,10 @@ buf_page_is_corrupted(
 			/* Page is encrypted if encryption information is found from
 			tablespace and page contains used key_version. This is true
 			also for pages first compressed and then encrypted. */
+			page_encrypted = true;
+		}
+
+		if (reread_page0) {
 			page_encrypted = true;
 		}
 	}
