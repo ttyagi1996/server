@@ -739,12 +739,7 @@ show create table t1;
 drop table t1;
 
 select hex(concat(period_diff(200902, 200802)));
-
-# Refer: MDEV-11685
-let $character_set_connection_saved=`select @@character_set_connection`;
-set character_set_connection=utf8;
 set sql_mode = 'NO_ENGINE_SUBSTITUTION';
-eval set character_set_connection=$character_set_connection_saved;
 
 create table t1 as select concat(period_add(200902, 200802)) as c1;
 set sql_mode = default;

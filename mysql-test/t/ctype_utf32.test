@@ -717,12 +717,7 @@ drop table t1;
 #
 # Testing auto-conversion to TEXT
 #
-
-# Refer: MDEV-11685
-let $character_set_connection_saved=`select @@character_set_connection`;
-set character_set_connection=utf8;
 set sql_mode = 'NO_ENGINE_SUBSTITUTION';
-eval set character_set_connection=$character_set_connection_saved;
 create table t1 (a varchar(17000) character set utf32);
 set sql_mode = default;
 show create table t1;

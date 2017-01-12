@@ -1012,9 +1012,7 @@ DBFFDCFF
 drop table t1;
 create table t1 (s1 varchar(50) character set ucs2);
 insert into t1 values (0xdf84);
-set character_set_connection=utf8;
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
-set character_set_connection=utf16;
 alter table t1 modify column s1 varchar(50) character set utf16;
 Warnings:
 Warning	1366	Incorrect string value: '\xDF\x84' for column 's1' at row 1
@@ -1278,9 +1276,7 @@ a
 1
 1
 drop table t1;
-set character_set_connection=utf8;
 set sql_mode = 'NO_ENGINE_SUBSTITUTION';
-set character_set_connection=utf16;
 create table t1 (a varchar(17000) character set utf16);
 Warnings:
 Note	1246	Converting column 'a' from VARCHAR to TEXT

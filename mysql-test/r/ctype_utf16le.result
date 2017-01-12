@@ -1121,9 +1121,7 @@ DROP TABLE t1;
 #
 CREATE TABLE t1 (s1 VARCHAR(50) CHARACTER SET ucs2);
 INSERT INTO t1 VALUES (0xDF84);
-SET character_set_connection=utf8;
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
-SET character_set_connection=utf16le;
 ALTER TABLE t1 MODIFY column s1 VARCHAR(50) CHARACTER SET utf16le;
 Warnings:
 Warning	1366	Incorrect string value: '\xDF\x84' for column 's1' at row 1
@@ -1539,9 +1537,7 @@ DROP TABLE t1;
 #
 # Testing auto-conversion to TEXT
 #
-SET character_set_connection=utf8;
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
-SET character_set_connection=utf16le;
 CREATE TABLE t1 (a VARCHAR(17000) CHARACTER SET utf16le);
 Warnings:
 Note	1246	Converting column 'a' from VARCHAR to TEXT
