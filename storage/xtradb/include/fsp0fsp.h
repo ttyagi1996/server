@@ -970,18 +970,6 @@ fsp_page_is_free_func(
 	const char *file,
 	ulint line);
 
-/********************************************************************//**
-Verify that dictionary flags modified to tablespace flags
-and actual tablespace flags stored to FSP header match.
-@param[in]	dict_flags	dict_tf_to_fsp_flags(dict_table_t::flags)
-@param[in]	fsp_flags	Actual flags stored to FSP header in page 0
-@return	true if flags match, false if not */
-bool
-fsp_verify_flags(
-	ulint	dict_flags,
-	ulint   fsp_flags)
-	MY_ATTRIBUTE((warn_unused_result));
-
 #ifndef UNIV_NONINL
 #include "fsp0fsp.ic"
 #endif
