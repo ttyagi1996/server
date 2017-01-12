@@ -4130,7 +4130,7 @@ mysql_prepare_create_table(THD *thd, HA_CREATE_INFO *create_info,
     }
 
     if (thd->variables.sql_mode & MODE_NO_ZERO_DATE &&
-        !sql_field->default_value &&
+        !sql_field->default_value && !sql_field->vcol_info &&
         is_timestamp_type(sql_field->sql_type) &&
         (sql_field->flags & NOT_NULL_FLAG) &&
         (type == Field::NONE || type == Field::TIMESTAMP_UN_FIELD))
