@@ -6,6 +6,7 @@ set default_storage_engine=innodb;
 # Function defaults run 1. No microsecond precision.
 #
 SET TIME_ZONE = "+00:00";
+SET SQL_MODE = 'NO_ENGINE_SUBSTITUTION';
 #
 # Test of errors for column data types that dont support function
 # defaults.
@@ -1552,6 +1553,7 @@ DROP TABLE t1;
 # Function defaults run 2. Six digits scale on seconds precision.
 #
 SET TIME_ZONE = "+00:00";
+SET SQL_MODE = 'NO_ENGINE_SUBSTITUTION';
 #
 # Test of errors for column data types that dont support function
 # defaults.
