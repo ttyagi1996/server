@@ -929,29 +929,21 @@ dict_tf_to_fsp_flags(
 	fsp_flags = DICT_TF_HAS_ATOMIC_BLOBS(table_flags) ? 1 : 0;
 
 	/* ZIP_SSIZE and ATOMIC_BLOBS are at the same position. */
-	fsp_flags |= table_flags & DICT_TF_MASK_ZIP_SSIZE;
-	fsp_flags |= table_flags & DICT_TF_MASK_ATOMIC_BLOBS;
+	fsp_flags |= table_flags
+		& (DICT_TF_MASK_ZIP_SSIZE | DICT_TF_MASK_ATOMIC_BLOBS);
 
 	/* In addition, tablespace flags also contain the page size. */
-	fsp_flags |= fsp_flags_set_page_size(fsp_flags, UNIV_PAGE_SIZE);
+	fsp_flags = fsp_flags_set_page_size(fsp_flags, UNIV_PAGE_SIZE);
 
 	/* The DATA_DIR flag is in a different position in fsp_flag */
 	fsp_flags |= DICT_TF_HAS_DATA_DIR(table_flags)
 		     ? FSP_FLAGS_MASK_DATA_DIR : 0;
 
-	/* In addition, tablespace flags also contain if the page
-	compression is used for this table. */
-	fsp_flags |= FSP_FLAGS_SET_PAGE_COMPRESSION(fsp_flags, page_compression);
-
-	if (page_compression) {
-		/* In addition, tablespace flags also contain page compression level
-		if page compression is used for this table. */
-		fsp_flags |= FSP_FLAGS_SET_PAGE_COMPRESSION_LEVEL(fsp_flags, page_compression_level);
-	}
-
-	/* In addition, tablespace flags also contain flag if atomic writes
-	is used for this table */
-	fsp_flags |= FSP_FLAGS_SET_ATOMIC_WRITES(fsp_flags, atomic_writes);
+	fsp_flags |= page_compression
+		<< FSP_FLAGS_POS_PAGE_COMPRESSION;
+	fsp_flags |= page_compression_level
+		<< FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL;
+	fsp_flags |= atomic_writes << FSP_FLAGS_POS_ATOMIC_WRITES;
 
 	ut_a(fsp_flags_is_valid(fsp_flags));
 

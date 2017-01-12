@@ -243,26 +243,6 @@ these are only used in MySQL 5.7 and used for compatibility. */
 #define FSP_FLAGS_GET_UNUSED(flags)				\
 		(flags >> FSP_FLAGS_POS_UNUSED)
 
-/** Set a PAGE_SSIZE into the correct bits in a given
-tablespace flags. */
-#define FSP_FLAGS_SET_PAGE_SSIZE(flags, ssize)			\
-		(flags | (ssize << FSP_FLAGS_POS_PAGE_SSIZE))
-
-/** Set a PAGE_COMPRESSION into the correct bits in a given
-tablespace flags. */
-#define FSP_FLAGS_SET_PAGE_COMPRESSION(flags, compression)	\
-		(flags | (compression << FSP_FLAGS_POS_PAGE_COMPRESSION))
-
-/** Set a PAGE_COMPRESSION_LEVEL into the correct bits in a given
-tablespace flags. */
-#define FSP_FLAGS_SET_PAGE_COMPRESSION_LEVEL(flags, level)	\
-		(flags | (level << FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL))
-
-/** Set a ATOMIC_WRITES into the correct bits in a given
-tablespace flags. */
-#define FSP_FLAGS_SET_ATOMIC_WRITES(flags, atomics)		\
-		(flags | (atomics << FSP_FLAGS_POS_ATOMIC_WRITES))
-
 /* Compatibility macros for MariaDB 10.1.20 or older 10.1 see
 table above. */
 /** Zero relative shift position of the PAGE_COMPRESSION field */

@@ -1,7 +1,7 @@
 /*****************************************************************************
 
 Copyright (c) 1995, 2012, Oracle and/or its affiliates. All Rights Reserved.
-Copyright (c) 2013, SkySQL Ab. All Rights Reserved.
+Copyright (c) 2013, 2017, MariaDB Corporation.
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -249,6 +249,7 @@ fsp_flags_set_page_size(
 	/* Page size should be > UNIV_PAGE_SIZE_MIN */
 	ut_ad(page_size >= UNIV_PAGE_SIZE_MIN);
 	ut_ad(page_size <= UNIV_PAGE_SIZE_MAX);
+	ut_ad(ut_is_2pow(page_size));
 
 	if (page_size == UNIV_PAGE_SIZE_ORIG) {
 		ut_ad(0 == FSP_FLAGS_GET_PAGE_SSIZE(flags));
@@ -260,7 +261,6 @@ fsp_flags_set_page_size(
 	     shift--) {
 		ulint	mask = (1 << shift);
 		if (page_size & mask) {
-			ut_ad(!(page_size & ~mask));
 			ssize = shift - UNIV_ZIP_SIZE_SHIFT_MIN + 1;
 			break;
 		}
@@ -269,8 +269,9 @@ fsp_flags_set_page_size(
 	ut_ad(ssize);
 	ut_ad(ssize <= UNIV_PAGE_SSIZE_MAX);
 
-	flags = FSP_FLAGS_SET_PAGE_SSIZE(flags, ssize);
-
+	flags |= ssize << FSP_FLAGS_POS_PAGE_SSIZE;
+	ut_ad(page_size == 1UL << (FSP_FLAGS_GET_PAGE_SSIZE(flags)
+				   + UNIV_ZIP_SIZE_SHIFT_MIN - 1));
 	ut_ad(fsp_flags_is_valid(flags));
 
 	return(flags);
