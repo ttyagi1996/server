@@ -191,6 +191,20 @@ fsp_flags_get_page_size(
 	ulint	flags)	/*!< in: tablespace flags */
 {
 	ulint	page_size = 0;
+	// FIXME: Move the ATOMIC_WRITE flags towards MSB, and mask it
+	// when writing FSP_SPACE_FLAGS.
+	// In 10.2 do the same for TEMPORARY if needed.
+
+	// FIXME: Check the values of the individual fields to determine
+	// if the flags are in the buggy MariaDB 10.1 format.
+	// The correct bits 6..10 are PAGE_SSIZE|DATA_DIR.
+	// The buggy 10.1 bits 6..10 are either 0 or 17..25 (compression).
+	// The correct bits 11..12 are 0 (5.7 SHARED,TEMPORARY).
+	// The buggy bits 11..12 are ATOMIC_WRITE (0 to 2)
+	// The correct bits 13..16 are 0..1 (5.7 crypt, 8.0 SDI, 1 reserved)
+	// The buggy bits 13..16 are PAGE_SSIZE (3..13).
+	// (We can ignore the buggy DATA_DIR bit.)
+
 	bool	old_unused = !FSP_FLAGS_GET_UNUSED_OLD(flags);
 	bool	mariadb11_unused = !FSP_FLAGS_GET_UNUSED_MARIADB101(flags);
 	bool	mariadb_buggy_format = (!old_unused && mariadb11_unused);

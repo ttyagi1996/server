@@ -94,17 +94,19 @@ Below note the difference in order
 =====================================================================
 6..9: PAGE_SSIZE(3..13)	6: COMPRESSION		6..9: PAGE_SSIZE(3..13)
 10: DATA_DIR		7..10: COMP_LEVEL(0..9)	10: DATA_DIR
-11: UNUSED		11:ATOMIC_WRITES
+11: UNUSED		11..12:ATOMIC_WRITES
 =====================================================================
 The flags below were in incorrect position in MariaDB 10.1,
-or have been introduced in MySQL 5.7:
+or have been introduced in MySQL 5.7 or 8.0:
 =====================================================================
 			13..16: PAGE_SSIZE	11: RESERVED (5.7 SHARED)
 			17: DATA_DIR	  	12: RESERVED (5.7 TEMPORARY)
 			18:UNUSED	  	13: RESERVED (5.7 ENCRYPTION)
+FIXME: Add					14: RESERVED (8.0 SDI)
+FIXME: Add (see fsp_flags_get_page_size())	15: RESERVED
 						14..17: COMP_LEVEL (0..9)
-						18: ATOMIC_WRITES
-						19: UNUSED
+FIXME: (RE)MOVE (see fsp_flags_get_page_size())	18..19: ATOMIC_WRITES
+						20: UNUSED
 */
 
 /** Zero relative shift position of the POST_ANTELOPE field */
