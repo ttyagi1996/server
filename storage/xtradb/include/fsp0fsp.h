@@ -80,7 +80,7 @@ is found in a remote location, not the default data directory. */
 /** A mask of all the known/used bits in tablespace flags */
 #define FSP_FLAGS_MASK		(~(~0 << FSP_FLAGS_WIDTH))
 
-/** Tablespace flags position and name in MySQL 5.6/MariaDB 10.0 or older
+/* FSP_SPACE_FLAGS position and name in MySQL 5.6/MariaDB 10.0 or older
 and MariaDB 10.1.20 or older MariaDB 10.1 and in MariaDB 10.1.21
 or newer.
 MySQL 5.6		MariaDB 10.1.x		MariaDB 10.1.21
@@ -88,24 +88,25 @@ MySQL 5.6		MariaDB 10.1.x		MariaDB 10.1.21
 Below flags in same offset
 ====================================================================
 0: POST_ANTELOPE	0:POST_ANTELOPE		0: POST_ANTELOPE
-1: ZIP_SSIZE    	1:ZIP_SSIZE		1: ZIP_SSIZE
+1..4: ZIP_SSIZE(0..6)	1..4:ZIP_SSIZE(0..6)	1..4: ZIP_SSIZE(0..6)
 5: ATOMIC_BLOBS    	5:ATOMIC_BLOBS		5: ATOMIC_BLOBS
 =====================================================================
 Below note the difference in order
 =====================================================================
-6:  PAGE_SSIZE		6:PAGE_COMPRESSION	6: PAGE_SSIZE
-10: DATA_DIR		7:PAGE_COMPRESSION_LEVEL  10: DATA_DIR
+6..9: PAGE_SSIZE(3..13)	6: COMPRESSION		6..9: PAGE_SSIZE(3..13)
+10: DATA_DIR		7..10: COMP_LEVEL(0..9)	10: DATA_DIR
 11: UNUSED		11:ATOMIC_WRITES
 =====================================================================
-Note that below flags have been moved
+The flags below were in incorrect position in MariaDB 10.1,
+or have been introduced in MySQL 5.7:
 =====================================================================
-			13:PAGE_SSIZE  		11: RESERVED (5.7 SHARED)
-			17:DATA_DIR	  	12: RESERVED (5.7 TEMPORARY)
+			13..16: PAGE_SSIZE	11: RESERVED (5.7 SHARED)
+			17: DATA_DIR	  	12: RESERVED (5.7 TEMPORARY)
 			18:UNUSED	  	13: RESERVED (5.7 ENCRYPTION)
-						14: PAGE_COMPRESSION
-						15: PAGE_COMPRESSION_LEVEL
+FIXME:REMOVE THIS! (Use COMP_LEVEL!=0)		14: COMPRESSION
+						15..18: COMP_LEVEL (0..9)
 						19: ATOMIC_WRITES
-						21: UNUSED
+						20: UNUSED
 */
 
 /** Zero relative shift position of the POST_ANTELOPE field */
