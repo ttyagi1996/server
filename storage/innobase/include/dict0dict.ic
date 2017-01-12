@@ -931,8 +931,7 @@ dict_tf_to_fsp_flags(
 	fsp_flags |= table_flags
 		& (DICT_TF_MASK_ZIP_SSIZE | DICT_TF_MASK_ATOMIC_BLOBS);
 
-	/* In addition, tablespace flags also contain the page size. */
-	fsp_flags = fsp_flags_set_page_size(fsp_flags, UNIV_PAGE_SIZE);
+	fsp_flags |= FSP_FLAGS_PAGE_SSIZE();
 
 	/* The DATA_DIR flag is in a different position in fsp_flag */
 	fsp_flags |= DICT_TF_HAS_DATA_DIR(table_flags)

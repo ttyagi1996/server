@@ -230,6 +230,11 @@ these are only used in MySQL 5.7 and used for compatibility. */
 #define FSP_FLAGS_GET_UNUSED(flags)				\
 		(flags >> FSP_FLAGS_POS_UNUSED)
 
+/** @return the PAGE_SSIZE flags for the current innodb_page_size */
+#define FSP_FLAGS_PAGE_SSIZE()					\
+	((UNIV_PAGE_SIZE == UNIV_PAGE_SIZE_ORIG) ?		\
+	 0 : UNIV_PAGE_SIZE_SHIFT << FSP_FLAGS_POS_PAGE_SSIZE)
+
 /* Compatibility macros for MariaDB 10.1.20 or older 10.1 see
 table above. */
 /** Zero relative shift position of the PAGE_COMPRESSION field */

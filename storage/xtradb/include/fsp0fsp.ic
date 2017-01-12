@@ -229,51 +229,6 @@ fsp_flags_get_page_size(
 }
 
 #ifndef UNIV_INNOCHECKSUM
-
-/********************************************************************//**
-Add the page size to the tablespace flags.
-@return	tablespace flags after page size is added */
-UNIV_INLINE
-ulint
-fsp_flags_set_page_size(
-/*====================*/
-	ulint	flags,		/*!< in: tablespace flags */
-	ulint	page_size)	/*!< in: page size in bytes */
-{
-	ulint ssize = 0;
-	ulint shift;
-
-	/* Page size should be > UNIV_PAGE_SIZE_MIN */
-	ut_ad(page_size >= UNIV_PAGE_SIZE_MIN);
-	ut_ad(page_size <= UNIV_PAGE_SIZE_MAX);
-	ut_ad(ut_is_2pow(page_size));
-
-	if (page_size == UNIV_PAGE_SIZE_ORIG) {
-		ut_ad(0 == FSP_FLAGS_GET_PAGE_SSIZE(flags));
-		return(flags);
-	}
-
-	for (shift = UNIV_PAGE_SIZE_SHIFT_MAX;
-	     shift >= UNIV_PAGE_SIZE_SHIFT_MIN;
-	     shift--) {
-		ulint	mask = (1 << shift);
-		if (page_size & mask) {
-			ssize = shift - UNIV_ZIP_SIZE_SHIFT_MIN + 1;
-			break;
-		}
-	}
-
-	ut_ad(ssize);
-	ut_ad(ssize <= UNIV_PAGE_SSIZE_MAX);
-
-	flags |= ssize << FSP_FLAGS_POS_PAGE_SSIZE;
-	ut_ad(page_size == 1UL << (FSP_FLAGS_GET_PAGE_SSIZE(flags)
-				   + UNIV_ZIP_SIZE_SHIFT_MIN - 1));
-	ut_ad(fsp_flags_is_valid(flags));
-
-	return(flags);
-}
-
 /********************************************************************//**
 Calculates the descriptor index within a descriptor page.
 @return	descriptor index */

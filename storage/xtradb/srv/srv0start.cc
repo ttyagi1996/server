@@ -702,8 +702,7 @@ create_log_files(
 	sprintf(logfilename + dirnamelen, "ib_logfile%u", INIT_LOG_FILE0);
 
 	fil_space_create(
-		logfilename, SRV_LOG_SPACE_FIRST_ID,
-		fsp_flags_set_page_size(0, UNIV_PAGE_SIZE),
+		logfilename, SRV_LOG_SPACE_FIRST_ID, 0,
 		FIL_LOG,
 		NULL /* no encryption yet */,
 		true /* this is create */);
@@ -1195,7 +1194,7 @@ check_first_page:
 				crypt_data = fil_space_create_crypt_data(FIL_SPACE_ENCRYPTION_DEFAULT, FIL_DEFAULT_ENCRYPTION_KEY);
 			}
 
-			flags = fsp_flags_set_page_size(0, UNIV_PAGE_SIZE);
+			flags = FSP_FLAGS_PAGE_SSIZE();
 
 			fil_space_create(name, 0, flags, FIL_TABLESPACE,
 					crypt_data, (*create_new_db) == true);
@@ -1343,7 +1342,7 @@ srv_undo_tablespace_open(
 		fil_set_max_space_id_if_bigger(space);
 
 		/* Set the compressed page size to 0 (non-compressed) */
-		flags = fsp_flags_set_page_size(0, UNIV_PAGE_SIZE);
+		flags = FSP_FLAGS_PAGE_SSIZE();
 		fil_space_create(name, space, flags, FIL_TABLESPACE,
 				NULL /* no encryption */,
 				true /* create */);
@@ -2372,9 +2371,7 @@ innobase_start_or_create_for_mysql(void)
 		sprintf(logfilename + dirnamelen, "ib_logfile%u", 0);
 
 		fil_space_create(logfilename,
-				 SRV_LOG_SPACE_FIRST_ID,
-				 fsp_flags_set_page_size(0, UNIV_PAGE_SIZE),
-				 FIL_LOG,
+				 SRV_LOG_SPACE_FIRST_ID, 0, FIL_LOG,
 				 NULL /* no encryption yet */,
 				 true /* create */);
 
