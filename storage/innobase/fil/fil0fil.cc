@@ -589,6 +589,9 @@ static
 bool
 fsp_flags_match(ulint expected, ulint actual)
 {
+	expected &= ~(7 << FSP_FLAGS_MEM_DATA_DIR);
+	ut_ad(!(expected & ~FSP_FLAGS_MASK));
+
 	if (actual == expected) {
 		return(true);
 	}
@@ -601,32 +604,28 @@ fsp_flags_match(ulint expected, ulint actual)
 	if (FSP_FLAGS_GET_UNUSED_OLD(actual) ||
 	    !FSP_FLAGS_GET_UNUSED_MARIADB101(actual)) {
 		actual &= ~FSP_FLAGS_MASK_DATA_DIR;
-	} else if (FSP_FLAGS_HAS_DATA_DIR_MARIADB101(actual)) {
+	} else {
 		actual &= ~FSP_FLAGS_MASK_DATA_DIR_MARIADB101;
 	}
-
-	expected &= ~FSP_FLAGS_MASK_DATA_DIR;
 
 	if (actual == expected) {
 		return(true);
 	}
 
-	ulint   expected_unused = FSP_FLAGS_GET_UNUSED(expected);
+	ulint   expected_unused = 0;//FIXME: FSP_FLAGS_GET_UNUSED(expected);
 	ulint   expected_antelope = FSP_FLAGS_GET_POST_ANTELOPE(expected);
 	ulint   expected_zssize = FSP_FLAGS_GET_ZIP_SSIZE(expected);
 	ulint	expected_ablobs = FSP_FLAGS_HAS_ATOMIC_BLOBS(expected);
 	// FIXME: use non-adjusting fsp_flags_get_page_size() here
 	ulint	expected_pssize = fsp_flags_get_page_size(expected);
-	ulint   expected_data_dir = FSP_FLAGS_HAS_DATA_DIR(expected);
 	ulint   expected_page_comp_level = FSP_FLAGS_GET_PAGE_COMPRESSION_LEVEL(expected);
 	ulint   expected_atomic = FSP_FLAGS_GET_ATOMIC_WRITES(expected);
 
-	ulint	actual_unused = FSP_FLAGS_GET_UNUSED(actual);
+	ulint	actual_unused = 0;//FIXME: FSP_FLAGS_GET_UNUSED(actual);
 	ulint	actual_antelope = FSP_FLAGS_GET_POST_ANTELOPE(actual);
 	ulint	actual_zssize = FSP_FLAGS_GET_ZIP_SSIZE(actual);
 	ulint	actual_ablobs = FSP_FLAGS_HAS_ATOMIC_BLOBS(actual);
 	ulint	actual_pssize = fsp_flags_get_page_size(actual);
-	ulint	actual_data_dir = FSP_FLAGS_HAS_DATA_DIR(actual);
 	ulint   actual_page_comp_level = FSP_FLAGS_GET_PAGE_COMPRESSION_LEVEL(actual);
 	ulint   actual_atomic = FSP_FLAGS_GET_ATOMIC_WRITES(actual);
 
@@ -670,15 +669,6 @@ fsp_flags_match(ulint expected, ulint actual)
 			expected_pssize, actual_pssize);
 
 		return (false);
-	}
-
-	if (expected_data_dir != actual_data_dir) {
-#ifdef UNIV_DEBUG
-		ib_logf(IB_LOG_LEVEL_INFO,
-			"Dictionary flags has data_dir %lu"
-			" but tablespace flags has data_dir %lu.",
-			expected_data_dir, actual_data_dir);
-#endif /* UNIV_DEBUG */
 	}
 
 	/* If tablespace is created using MySQL 5.6 or MariaDB 10.0
@@ -2375,6 +2365,7 @@ fil_op_write_log(
 	ulint	len;
 
 	log_ptr = mlog_open(mtr, 11 + 2 + 1);
+	ut_ad(fsp_flags_is_valid(flags));
 
 	if (!log_ptr) {
 		/* Logging in mtr is switched off during crash recovery:
@@ -3589,7 +3580,7 @@ fil_create_new_single_table_tablespace(
 	ut_ad(!srv_read_only_mode);
 	ut_a(space_id < SRV_LOG_SPACE_FIRST_ID);
 	ut_a(size >= FIL_IBD_FILE_INITIAL_SIZE);
-	ut_a(fsp_flags_is_valid(flags));
+	ut_a(fsp_flags_is_valid(flags & FSP_FLAGS_MASK));
 
 	if (is_temp) {
 		/* Temporary table filepath */
@@ -3685,7 +3676,6 @@ fil_create_new_single_table_tablespace(
 	flags |= FSP_FLAGS_PAGE_SSIZE();
 	fsp_header_init_fields(page, space_id, flags);
 	mach_write_to_4(page + FIL_PAGE_ARCH_LOG_NO_OR_SPACE_ID, space_id);
-	ut_ad(fsp_flags_is_valid(flags));
 
 	if (!(fsp_flags_is_compressed(flags))) {
 		buf_flush_init_for_writing(page, NULL, 0);
@@ -3764,7 +3754,8 @@ fil_create_new_single_table_tablespace(
 		fil_op_write_log(flags
 				 ? MLOG_FILE_CREATE2
 				 : MLOG_FILE_CREATE,
-				 space_id, mlog_file_flag, flags,
+				 space_id, mlog_file_flag,
+				 flags & FSP_FLAGS_MASK,
 				 tablename, NULL, &mtr);
 
 		mtr_commit(&mtr);

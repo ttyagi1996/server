@@ -933,15 +933,16 @@ dict_tf_to_fsp_flags(
 
 	fsp_flags |= FSP_FLAGS_PAGE_SSIZE();
 
-	/* The DATA_DIR flag is in a different position in fsp_flag */
-	fsp_flags |= DICT_TF_HAS_DATA_DIR(table_flags)
-		     ? FSP_FLAGS_MASK_DATA_DIR : 0;
-
 	fsp_flags |= page_compression_level
 		<< FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL;
-	fsp_flags |= atomic_writes << FSP_FLAGS_POS_ATOMIC_WRITES;
 
 	ut_a(fsp_flags_is_valid(fsp_flags));
+
+	if (DICT_TF_HAS_DATA_DIR(table_flags)) {
+		fsp_flags |= 1U << FSP_FLAGS_MEM_DATA_DIR;
+	}
+
+	fsp_flags |= atomic_writes << FSP_FLAGS_MEM_ATOMIC_WRITES;
 
 	return(fsp_flags);
 }

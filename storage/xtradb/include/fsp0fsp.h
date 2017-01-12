@@ -60,23 +60,19 @@ is found in a remote location, not the default data directory. */
 /** Number of flag bits used to indicate atomic writes for this tablespace */
 #define FSP_FLAGS_WIDTH_ATOMIC_WRITES  2
 
-/** Number of flag bits used to indicate reserved bit */
-#define FSP_FLAGS_WIDTH_RESERVED 1
+/** Number of reserved bits */
+#define FSP_FLAGS_WIDTH_RESERVED 6
 
-/** Width of all the currently known tablespace flags */
+/** Width of all the currently known persistent tablespace flags */
 #define FSP_FLAGS_WIDTH		(FSP_FLAGS_WIDTH_POST_ANTELOPE	\
 				+ FSP_FLAGS_WIDTH_ZIP_SSIZE	\
 				+ FSP_FLAGS_WIDTH_ATOMIC_BLOBS	\
 				+ FSP_FLAGS_WIDTH_PAGE_SSIZE	\
-				+ FSP_FLAGS_WIDTH_DATA_DIR      \
 				+ FSP_FLAGS_WIDTH_RESERVED	\
-				+ FSP_FLAGS_WIDTH_RESERVED	\
-				+ FSP_FLAGS_WIDTH_RESERVED	\
-				+ FSP_FLAGS_WIDTH_PAGE_COMPRESSION_LEVEL \
-				+ FSP_FLAGS_WIDTH_ATOMIC_WRITES )
+				+ FSP_FLAGS_WIDTH_PAGE_COMPRESSION_LEVEL)
 
-/** A mask of all the known/used bits in tablespace flags */
-#define FSP_FLAGS_MASK		(~(~0 << FSP_FLAGS_WIDTH))
+/** A mask of all the known/used bits in FSP_SPACE_FLAGS */
+#define FSP_FLAGS_MASK		(~(~0U << FSP_FLAGS_WIDTH))
 
 /* FSP_SPACE_FLAGS position and name in MySQL 5.6/MariaDB 10.0 or older
 and MariaDB 10.1.20 or older MariaDB 10.1 and in MariaDB 10.1.21
@@ -92,7 +88,7 @@ Below flags in same offset
 Below note the difference in order
 =====================================================================
 6..9: PAGE_SSIZE(3..13)	6: COMPRESSION		6..9: PAGE_SSIZE(3..13)
-10: DATA_DIR		7..10: COMP_LEVEL(0..9)	10: DATA_DIR
+10: DATA_DIR		7..10: COMP_LEVEL(0..9)	10: RESERVED (5.6 DATA_DIR)
 11: UNUSED		11..12:ATOMIC_WRITES
 =====================================================================
 The flags below were in incorrect position in MariaDB 10.1,
@@ -101,11 +97,15 @@ or have been introduced in MySQL 5.7 or 8.0:
 			13..16: PAGE_SSIZE	11: RESERVED (5.7 SHARED)
 			17: DATA_DIR	  	12: RESERVED (5.7 TEMPORARY)
 			18:UNUSED	  	13: RESERVED (5.7 ENCRYPTION)
-FIXME: Add					14: RESERVED (8.0 SDI)
-FIXME: Add (see fsp_flags_get_page_size())	15: RESERVED
-						14..17: COMP_LEVEL (0..9)
-FIXME: (RE)MOVE (see fsp_flags_get_page_size())	18..19: ATOMIC_WRITES
+						14: RESERVED (8.0 SDI)
+						15: RESERVED
+						16..19: COMP_LEVEL (0..9)
 						20: UNUSED
+=====================================================================
+The flags below only exist in fil_space_t::flags; not in FSP_SPACE_FLAGS
+						29: DATA_DIR
+						30..31: ATOMIC_WRITES
+=====================================================================
 */
 
 /** Zero relative shift position of the POST_ANTELOPE field */
@@ -119,30 +119,22 @@ FIXME: (RE)MOVE (see fsp_flags_get_page_size())	18..19: ATOMIC_WRITES
 /** Zero relative shift position of the start of the PAGE_SSIZE bits */
 #define FSP_FLAGS_POS_PAGE_SSIZE	(FSP_FLAGS_POS_ATOMIC_BLOBS	\
                                         + FSP_FLAGS_WIDTH_ATOMIC_BLOBS)
-/** Zero relative shift position of the start of the DATA DIR bits */
-#define FSP_FLAGS_POS_DATA_DIR		(FSP_FLAGS_POS_PAGE_SSIZE	\
-					+ FSP_FLAGS_WIDTH_PAGE_SSIZE)
 /** Zero relative shift position of the start of the UNUSED bits
 for MySQL 5.6 and MariaDB 10.0 or older. */
-#define FSP_FLAGS_POS_UNUSED_OLD	(FSP_FLAGS_POS_DATA_DIR		\
+#define FSP_FLAGS_POS_UNUSED_OLD	(FSP_FLAGS_POS_PAGE_SSIZE	\
+					+ FSP_FLAGS_WIDTH_PAGE_SSIZE	\
 					+ FSP_FLAGS_WIDTH_DATA_DIR)
 /** Zero relative shift position of the start of the RESERVED bits
 these are only used in MySQL 5.7 and used for compatibility. */
-#define FSP_FLAGS_POS_RESERVED1		(FSP_FLAGS_POS_DATA_DIR		\
-					+ FSP_FLAGS_WIDTH_DATA_DIR)
-#define FSP_FLAGS_POS_RESERVED2		(FSP_FLAGS_POS_RESERVED1	\
-					+ FSP_FLAGS_WIDTH_RESERVED)
-#define FSP_FLAGS_POS_RESERVED3		(FSP_FLAGS_POS_RESERVED2	\
-					+ FSP_FLAGS_WIDTH_RESERVED)
+#define FSP_FLAGS_POS_RESERVED		(FSP_FLAGS_POS_PAGE_SSIZE	\
+					+ FSP_FLAGS_WIDTH_PAGE_SSIZE)
 /** Zero relative shift position of the PAGE_COMPRESSION_LEVEL field */
-#define FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL	(FSP_FLAGS_POS_RESERVED3 \
+#define FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL	(FSP_FLAGS_POS_RESERVED \
 					+ FSP_FLAGS_WIDTH_RESERVED)
+/** Zero relative shift position of the DATA_DIR flag */
+#define FSP_FLAGS_MEM_DATA_DIR		29
 /** Zero relative shift position of the ATOMIC_WRITES field */
-#define FSP_FLAGS_POS_ATOMIC_WRITES	(FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL	\
-					+ FSP_FLAGS_WIDTH_PAGE_COMPRESSION_LEVEL)
-/** Zero relative shift position of the start of the UNUSED bits */
-#define FSP_FLAGS_POS_UNUSED		(FSP_FLAGS_POS_ATOMIC_WRITES	\
-                                        + FSP_FLAGS_WIDTH_ATOMIC_WRITES)
+#define FSP_FLAGS_MEM_ATOMIC_WRITES	30
 
 /** Bit mask of the POST_ANTELOPE field */
 #define FSP_FLAGS_MASK_POST_ANTELOPE				\
@@ -163,19 +155,11 @@ these are only used in MySQL 5.7 and used for compatibility. */
 /** Bit mask of the DATA_DIR field */
 #define FSP_FLAGS_MASK_DATA_DIR					\
 		((~(~0U << FSP_FLAGS_WIDTH_DATA_DIR))		\
-		<< FSP_FLAGS_POS_DATA_DIR)
+		<< FSP_FLAGS_MEM_DATA_DIR)
 /** Bit mask of the RESERVED1 field */
-#define FSP_FLAGS_MASK_RESERVED1				\
+#define FSP_FLAGS_MASK_RESERVED					\
 		((~(~0U << FSP_FLAGS_WIDTH_RESERVED))		\
-		<< FSP_FLAGS_POS_RESERVED1)
-/** Bit mask of the RESERVED2 field */
-#define FSP_FLAGS_MASK_RESERVED2				\
-		((~(~0U << FSP_FLAGS_WIDTH_RESERVED))		\
-		<< FSP_FLAGS_POS_RESERVED2)
-/** Bit mask of the RESERVED3 field */
-#define FSP_FLAGS_MASK_RESERVED3				\
-		((~(~0U << FSP_FLAGS_WIDTH_RESERVED))		\
-		<< FSP_FLAGS_POS_RESERVED3)
+		<< FSP_FLAGS_POS_RESERVED)
 /** Bit mask of the PAGE_COMPRESSION_LEVEL field */
 #define FSP_FLAGS_MASK_PAGE_COMPRESSION_LEVEL			\
 		((~(~0U << FSP_FLAGS_WIDTH_PAGE_COMPRESSION_LEVEL))	\
@@ -183,7 +167,7 @@ these are only used in MySQL 5.7 and used for compatibility. */
 /** Bit mask of the ATOMIC_WRITES field */
 #define FSP_FLAGS_MASK_ATOMIC_WRITES				\
 		((~(~0U << FSP_FLAGS_WIDTH_ATOMIC_WRITES))	\
-		<< FSP_FLAGS_POS_ATOMIC_WRITES)
+		 << FSP_FLAGS_MEM_ATOMIC_WRITES)
 
 /** Return the value of the POST_ANTELOPE field */
 #define FSP_FLAGS_GET_POST_ANTELOPE(flags)			\
@@ -204,30 +188,22 @@ these are only used in MySQL 5.7 and used for compatibility. */
 /** Return the value of the DATA_DIR field */
 #define FSP_FLAGS_HAS_DATA_DIR(flags)				\
 		((flags & FSP_FLAGS_MASK_DATA_DIR)		\
-		>> FSP_FLAGS_POS_DATA_DIR)
+		>> FSP_FLAGS_MEM_DATA_DIR)
 /** Return the contents of the UNUSED bits */
 #define FSP_FLAGS_GET_UNUSED_OLD(flags)				\
 		(flags >> FSP_FLAGS_POS_UNUSED_OLD)
-/** Return the value of the RESERVED1 field */
-#define FSP_FLAGS_GET_RESERVED1(flags)				\
-		((flags & FSP_FLAGS_MASK_RESERVED1)		\
-		>> FSP_FLAGS_POS_RESERVED1)
-/** Return the value of the RESERVED2 field */
-#define FSP_FLAGS_GET_RESERVED2(flags)				\
-		((flags & FSP_FLAGS_MASK_RESERVED2)		\
-		>> FSP_FLAGS_POS_RESERVED2)
-/** Return the value of the RESERVED3 field */
-#define FSP_FLAGS_GET_RESERVED3(flags)				\
-		((flags & FSP_FLAGS_MASK_RESERVED3)		\
-		>> FSP_FLAGS_POS_RESERVED3)
+/** @return the RESERVED flags */
+#define FSP_FLAGS_GET_RESERVED(flags)				\
+		((flags & FSP_FLAGS_MASK_RESERVED)		\
+		>> FSP_FLAGS_POS_RESERVED)
 /** Return the value of the PAGE_COMPRESSION_LEVEL field */
 #define FSP_FLAGS_GET_PAGE_COMPRESSION_LEVEL(flags)		\
 		((flags & FSP_FLAGS_MASK_PAGE_COMPRESSION_LEVEL) \
 		>> FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL)
-/** Return the value of the ATOMIC_WRITES field */
+/** @return the ATOMIC_WRITES field */
 #define FSP_FLAGS_GET_ATOMIC_WRITES(flags)			\
 		((flags & FSP_FLAGS_MASK_ATOMIC_WRITES) 	\
-		>> FSP_FLAGS_POS_ATOMIC_WRITES)
+		 >> FSP_FLAGS_MEM_ATOMIC_WRITES)
 /** Return the contents of the UNUSED bits */
 #define FSP_FLAGS_GET_UNUSED(flags)				\
 		(flags >> FSP_FLAGS_POS_UNUSED)
