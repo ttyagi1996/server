@@ -918,9 +918,12 @@ dict_tf_to_fsp_flags(
 	ulint	table_flags)	/*!< in: dict_table_t::flags */
 {
 	ulint fsp_flags;
-	ulint page_compression = DICT_TF_GET_PAGE_COMPRESSION(table_flags);
-	ulint page_compression_level = DICT_TF_GET_PAGE_COMPRESSION_LEVEL(table_flags);
+	ulint page_compression_level = DICT_TF_GET_PAGE_COMPRESSION_LEVEL(
+		table_flags);
 	ulint atomic_writes = DICT_TF_GET_ATOMIC_WRITES(table_flags);
+
+	ut_ad((DICT_TF_GET_PAGE_COMPRESSION(table_flags) == 0)
+	      == (page_compression_level == 0));
 
 	DBUG_EXECUTE_IF("dict_tf_to_fsp_flags_failure",
 			return(ULINT_UNDEFINED););
@@ -939,8 +942,6 @@ dict_tf_to_fsp_flags(
 	fsp_flags |= DICT_TF_HAS_DATA_DIR(table_flags)
 		     ? FSP_FLAGS_MASK_DATA_DIR : 0;
 
-	fsp_flags |= page_compression
-		<< FSP_FLAGS_POS_PAGE_COMPRESSION;
 	fsp_flags |= page_compression_level
 		<< FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL;
 	fsp_flags |= atomic_writes << FSP_FLAGS_POS_ATOMIC_WRITES;

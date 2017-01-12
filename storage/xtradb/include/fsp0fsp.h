@@ -1,7 +1,7 @@
 /*****************************************************************************
 
 Copyright (c) 1995, 2016, Oracle and/or its affiliates. All Rights Reserved.
-Copyright (c) 2013, 2016, MariaDB Corporation. All Rights Reserved.
+Copyright (c) 2013, 2017, MariaDB Corporation. All Rights Reserved.
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -54,8 +54,7 @@ to the two Barracuda row formats COMPRESSED and DYNAMIC. */
 /** Width of the DATA_DIR flag.  This flag indicates that the tablespace
 is found in a remote location, not the default data directory. */
 #define FSP_FLAGS_WIDTH_DATA_DIR	1
-/** Number of flag bits used to indicate the page compression and compression level */
-#define FSP_FLAGS_WIDTH_PAGE_COMPRESSION  1
+/** Number of flag bits used to indicate the page compression level */
 #define FSP_FLAGS_WIDTH_PAGE_COMPRESSION_LEVEL 4
 
 /** Number of flag bits used to indicate atomic writes for this tablespace */
@@ -73,7 +72,6 @@ is found in a remote location, not the default data directory. */
 				+ FSP_FLAGS_WIDTH_RESERVED	\
 				+ FSP_FLAGS_WIDTH_RESERVED	\
 				+ FSP_FLAGS_WIDTH_RESERVED	\
-				+ FSP_FLAGS_WIDTH_PAGE_COMPRESSION \
 				+ FSP_FLAGS_WIDTH_PAGE_COMPRESSION_LEVEL \
 				+ FSP_FLAGS_WIDTH_ATOMIC_WRITES )
 
@@ -103,10 +101,9 @@ or have been introduced in MySQL 5.7:
 			13..16: PAGE_SSIZE	11: RESERVED (5.7 SHARED)
 			17: DATA_DIR	  	12: RESERVED (5.7 TEMPORARY)
 			18:UNUSED	  	13: RESERVED (5.7 ENCRYPTION)
-FIXME:REMOVE THIS! (Use COMP_LEVEL!=0)		14: COMPRESSION
-						15..18: COMP_LEVEL (0..9)
-						19: ATOMIC_WRITES
-						20: UNUSED
+						14..17: COMP_LEVEL (0..9)
+						18: ATOMIC_WRITES
+						19: UNUSED
 */
 
 /** Zero relative shift position of the POST_ANTELOPE field */
@@ -135,12 +132,9 @@ these are only used in MySQL 5.7 and used for compatibility. */
 					+ FSP_FLAGS_WIDTH_RESERVED)
 #define FSP_FLAGS_POS_RESERVED3		(FSP_FLAGS_POS_RESERVED2	\
 					+ FSP_FLAGS_WIDTH_RESERVED)
-/** Zero relative shift position of the PAGE_COMPRESSION field */
-#define FSP_FLAGS_POS_PAGE_COMPRESSION	(FSP_FLAGS_POS_RESERVED3	\
-					+ FSP_FLAGS_WIDTH_RESERVED)
 /** Zero relative shift position of the PAGE_COMPRESSION_LEVEL field */
-#define FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL	(FSP_FLAGS_POS_PAGE_COMPRESSION	\
-					+ FSP_FLAGS_WIDTH_PAGE_COMPRESSION)
+#define FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL	(FSP_FLAGS_POS_RESERVED3 \
+					+ FSP_FLAGS_WIDTH_RESERVED)
 /** Zero relative shift position of the ATOMIC_WRITES field */
 #define FSP_FLAGS_POS_ATOMIC_WRITES	(FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL	\
 					+ FSP_FLAGS_WIDTH_PAGE_COMPRESSION_LEVEL)
@@ -180,10 +174,6 @@ these are only used in MySQL 5.7 and used for compatibility. */
 #define FSP_FLAGS_MASK_RESERVED3				\
 		((~(~0U << FSP_FLAGS_WIDTH_RESERVED))		\
 		<< FSP_FLAGS_POS_RESERVED3)
-/** Bit mask of the PAGE_COMPRESSION field */
-#define FSP_FLAGS_MASK_PAGE_COMPRESSION				\
-		((~(~0U << FSP_FLAGS_WIDTH_PAGE_COMPRESSION))	\
-		<< FSP_FLAGS_POS_PAGE_COMPRESSION)
 /** Bit mask of the PAGE_COMPRESSION_LEVEL field */
 #define FSP_FLAGS_MASK_PAGE_COMPRESSION_LEVEL			\
 		((~(~0U << FSP_FLAGS_WIDTH_PAGE_COMPRESSION_LEVEL))	\
@@ -228,10 +218,6 @@ these are only used in MySQL 5.7 and used for compatibility. */
 #define FSP_FLAGS_GET_RESERVED3(flags)				\
 		((flags & FSP_FLAGS_MASK_RESERVED3)		\
 		>> FSP_FLAGS_POS_RESERVED3)
-/** Return the value of the PAGE_COMPRESSION field */
-#define FSP_FLAGS_GET_PAGE_COMPRESSION(flags)			\
-		((flags & FSP_FLAGS_MASK_PAGE_COMPRESSION)	\
-		>> FSP_FLAGS_POS_PAGE_COMPRESSION)
 /** Return the value of the PAGE_COMPRESSION_LEVEL field */
 #define FSP_FLAGS_GET_PAGE_COMPRESSION_LEVEL(flags)		\
 		((flags & FSP_FLAGS_MASK_PAGE_COMPRESSION_LEVEL) \
@@ -252,8 +238,7 @@ table above. */
 	 + FSP_FLAGS_WIDTH_ATOMIC_BLOBS)
 /** Zero relative shift position of the PAGE_COMPRESSION_LEVEL field */
 #define FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL_MARIADB101	\
-	(FSP_FLAGS_POS_PAGE_COMPRESSION_MARIADB101	\
-	 + FSP_FLAGS_WIDTH_PAGE_COMPRESSION)
+	(FSP_FLAGS_POS_PAGE_COMPRESSION_MARIADB101 + 1)
 /** Zero relative shift position of the ATOMIC_WRITES field */
 #define FSP_FLAGS_POS_ATOMIC_WRITES_MARIADB101		\
 	(FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL_MARIADB101	\
@@ -273,8 +258,7 @@ table above. */
 
 /** Bit mask of the PAGE_COMPRESSION field */
 #define FSP_FLAGS_MASK_PAGE_COMPRESSION_MARIADB101		\
-		((~(~0U << FSP_FLAGS_WIDTH_PAGE_COMPRESSION))	\
-		<< FSP_FLAGS_POS_PAGE_COMPRESSION_MARIADB101)
+		(1 << FSP_FLAGS_POS_PAGE_COMPRESSION_MARIADB101)
 /** Bit mask of the PAGE_COMPRESSION_LEVEL field */
 #define FSP_FLAGS_MASK_PAGE_COMPRESSION_LEVEL_MARIADB101	\
 		((~(~0U << FSP_FLAGS_WIDTH_PAGE_COMPRESSION_LEVEL))	\
