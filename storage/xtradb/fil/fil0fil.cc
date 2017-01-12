@@ -1,7 +1,7 @@
 /*****************************************************************************
 
 Copyright (c) 1995, 2016, Oracle and/or its affiliates. All Rights Reserved.
-Copyright (c) 2013, 2016, MariaDB Corporation. All Rights Reserved.
+Copyright (c) 2013, 2017, MariaDB Corporation.
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -2046,7 +2046,7 @@ fil_read_first_page(
 	ibool		one_read_already,	/*!< in: TRUE if min and max
 						parameters below already
 						contain sensible data */
-	ulint*		flags,			/*!< out: tablespace flags */
+	ulint*		flags,			/*!< out: FSP_SPACE_FLAGS */
 	ulint*		space_id,		/*!< out: tablespace ID */
 	lsn_t*		min_flushed_lsn,	/*!< out: min of flushed
 						lsn values in data files */
@@ -3725,6 +3725,44 @@ fil_report_bad_tablespace(
 		(ulong) expected_id, (ulong) expected_flags);
 }
 
+/** Compare tablespace flags.
+Any difference in the DATA_DIRECTORY flag is ignored.
+
+If flags contain PAGE_SIZE we compare that page
+size is same and then compare the rest of the flags
+after DATA_DIRECTORY and PAGE_SIZE have been stripped.
+
+@param[in]	actual		flags read from FSP_SPACE_FLAGS
+@param[in]	expected	expected tablespace flags
+@return whether the flags match */
+static
+bool
+fsp_flags_match(ulint actual, ulint expected)
+{
+	/* If flags match, no need to investigate. */
+	if (actual == expected) {
+		return true;
+	}
+
+	/* Ignore the DATA_DIRECTORY flag, whether it is stored in the
+	incorrect 10.1 location or in the correct location.
+	Because the tablespace file may have been relocated or imported,
+	the flag inside the file does not serve any practical purpose. */
+
+	if (FSP_FLAGS_GET_UNUSED_OLD(actual) ||
+	    !FSP_FLAGS_GET_UNUSED_MARIADB101(actual)) {
+		actual &= ~FSP_FLAGS_MASK_DATA_DIR;
+	} else if (FSP_FLAGS_HAS_DATA_DIR_MARIADB101(actual)) {
+		actual &= ~FSP_FLAGS_MASK_DATA_DIR_MARIADB101;
+	}
+
+	expected &= ~FSP_FLAGS_MASK_DATA_DIR;
+
+	return(actual == expected
+	       || fsp_flags_get_page_size(actual)
+	       == fsp_flags_get_page_size(expected));
+}
+
 /********************************************************************//**
 Tries to open a single-table tablespace and optionally checks that the
 space id in it is correct. If this does not succeed, print an error message
@@ -3754,7 +3792,7 @@ fil_open_single_table_tablespace(
 	bool		validate,	/*!< in: Do we validate tablespace? */
 	bool		fix_dict,	/*!< in: Can we fix the dictionary? */
 	ulint		id,		/*!< in: space id */
-	ulint		flags,		/*!< in: tablespace flags */
+	ulint		flags,		/*!< in: expected FSP_SPACE_FLAGS */
 	const char*	tablename,	/*!< in: table name in the
 					databasename/tablename format */
 	const char*	path_in,	/*!< in: tablespace filepath */
@@ -3866,21 +3904,17 @@ fil_open_single_table_tablespace(
 		def.check_msg = fil_read_first_page(
 			def.file, FALSE, &def.flags, &def.id,
 			&def.lsn, &def.lsn, &def.crypt_data);
-		def.valid = !def.check_msg;
 
 		if (table) {
 			table->crypt_data = def.crypt_data;
 			table->page_0_read = true;
 		}
 
-		/* Validate this single-table-tablespace with SYS_TABLES. */
-		bool flags_correct = dict_compare_flags(def.flags, flags);
-
-		if (def.valid && def.id == id
-		    && flags_correct) {
+		def.valid = !def.check_msg && def.id == id
+			&& fsp_flags_match(def.flags, flags);
+		if (def.valid) {
 			valid_tablespaces_found++;
 		} else {
-			def.valid = false;
 			/* Do not use this tablespace. */
 			fil_report_bad_tablespace(
 				def.filepath, def.check_msg, def.id,
@@ -3893,7 +3927,6 @@ fil_open_single_table_tablespace(
 		remote.check_msg = fil_read_first_page(
 			remote.file, FALSE, &remote.flags, &remote.id,
 			&remote.lsn, &remote.lsn, &remote.crypt_data);
-		remote.valid = !remote.check_msg;
 
 		if (table) {
 			table->crypt_data = remote.crypt_data;
@@ -3901,13 +3934,11 @@ fil_open_single_table_tablespace(
 		}
 
 		/* Validate this single-table-tablespace with SYS_TABLES. */
-		bool flags_correct = dict_compare_flags(remote.flags, flags);
-
-		if (remote.valid && remote.id == id
-		    && flags_correct) {
+		remote.valid = !remote.check_msg && remote.id == id
+			&& fsp_flags_match(remote.flags, flags);
+		if (remote.valid) {
 			valid_tablespaces_found++;
 		} else {
-			remote.valid = false;
 			/* Do not use this linked tablespace. */
 			fil_report_bad_tablespace(
 				remote.filepath, remote.check_msg, remote.id,
@@ -3921,7 +3952,6 @@ fil_open_single_table_tablespace(
 		dict.check_msg = fil_read_first_page(
 			dict.file, FALSE, &dict.flags, &dict.id,
 			&dict.lsn, &dict.lsn, &dict.crypt_data);
-		dict.valid = !dict.check_msg;
 
 		if (table) {
 			table->crypt_data = dict.crypt_data;
@@ -3929,13 +3959,12 @@ fil_open_single_table_tablespace(
 		}
 
 		/* Validate this single-table-tablespace with SYS_TABLES. */
-		bool flags_correct = dict_compare_flags(dict.flags, flags);
+		dict.valid = !dict.check_msg && dict.id == id
+			&& fsp_flags_match(dict.flags, flags);
 
-		if (dict.valid && dict.id == id
-		    && flags_correct) {
+		if (dict.valid) {
 			valid_tablespaces_found++;
 		} else {
-			dict.valid = false;
 			/* Do not use this tablespace. */
 			fil_report_bad_tablespace(
 				dict.filepath, dict.check_msg, dict.id,

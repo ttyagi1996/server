@@ -986,11 +986,12 @@ dict_sys_tables_type_to_tf(
 	PAGE_COMPRESSION_LEVEL, ATOMIC_WRITES are the same. */
 	flags |= type & (DICT_TF_MASK_ZIP_SSIZE
 			 | DICT_TF_MASK_ATOMIC_BLOBS
-		         | DICT_TF_MASK_DATA_DIR
-                         | DICT_TF_MASK_PAGE_COMPRESSION
-                         | DICT_TF_MASK_PAGE_COMPRESSION_LEVEL
-			 | DICT_TF_MASK_ATOMIC_WRITES);
+			 | DICT_TF_MASK_DATA_DIR
+			 | DICT_TF_MASK_PAGE_COMPRESSION
+			 | DICT_TF_MASK_PAGE_COMPRESSION_LEVEL
+			 | DICT_TF_MASK_ATOMIC_WRITES
 
+	);
 
 	return(flags);
 }
@@ -1023,8 +1024,8 @@ dict_tf_to_sys_tables_type(
 	type |= flags & (DICT_TF_MASK_ZIP_SSIZE
 			 | DICT_TF_MASK_ATOMIC_BLOBS
 			 | DICT_TF_MASK_DATA_DIR
-                         | DICT_TF_MASK_PAGE_COMPRESSION
-                         | DICT_TF_MASK_PAGE_COMPRESSION_LEVEL
+			 | DICT_TF_MASK_PAGE_COMPRESSION
+			 | DICT_TF_MASK_PAGE_COMPRESSION_LEVEL
 			 | DICT_TF_MASK_ATOMIC_WRITES);
 
 	return(type);
@@ -1611,65 +1612,6 @@ dict_table_get_index_on_first_col(
 	}
 	ut_error;
 	return(0);
-}
-
-/** Compare tablespace flags.
-If flags contain DATA_DIR flag, it is removed as
-tablespace could have been relocated.
-
-If flags contain PAGE_SIZE we compare that page
-size is same and then compare the rest of the flags
-after DATA_DIR and PAGE_SIZE have been removed.
-
-@param[in]	flags		SYS_TABLES.flags
-@param[in]	mod_flags	Tablespace flags.
-@return true if flags match, false if not */
-UNIV_INLINE
-bool
-dict_compare_flags(
-	ulint	flags,
-	ulint	mod_flags)
-{
-	/* If flags match, no need to investigate. */
-	if (flags == mod_flags) {
-		return true;
-	}
-
-	/* We do not compare the DATA_DIR flag in case tablespace
-	was relocated. */
-
-	if (flags != mod_flags) {
-		if (FSP_FLAGS_GET_UNUSED_OLD(flags) ||
-		    !FSP_FLAGS_GET_UNUSED_MARIADB101(flags)) {
-			flags = (flags & ~FSP_FLAGS_MASK_DATA_DIR);
-		} else if(FSP_FLAGS_HAS_DATA_DIR_MARIADB101(flags)) {
-			flags = (flags & ~FSP_FLAGS_MASK_DATA_DIR_MARIADB101);
-		}
-
-		if (FSP_FLAGS_GET_UNUSED_OLD(mod_flags) ||
-		    !FSP_FLAGS_GET_UNUSED_MARIADB101(mod_flags)) {
-			mod_flags = (mod_flags & ~FSP_FLAGS_MASK_DATA_DIR);
-		} else if(FSP_FLAGS_HAS_DATA_DIR_MARIADB101(mod_flags)) {
-			mod_flags = (mod_flags & ~FSP_FLAGS_MASK_DATA_DIR_MARIADB101);
-		}
-	}
-
-	/* If flags match after removing DATA_DIR, no need to continue. */
-	if (flags == mod_flags) {
-		return true;
-	}
-
-	/* Next we need to compare PAGE_SSIZE in case this tablespace
-	was created using MariaDB 10.0 or MySQL 5.6. or older.*/
-	ulint page_ssize1 = fsp_flags_get_page_size(flags);
-	ulint page_ssize2 = fsp_flags_get_page_size(mod_flags);
-
-	/* Page size must match. */
-	if (page_ssize1 != page_ssize2) {
-		return false;
-	}
-
-	return (true);
 }
 
 #endif /* !UNIV_HOTBACKUP */
