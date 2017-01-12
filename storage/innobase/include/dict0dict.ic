@@ -950,7 +950,6 @@ dict_tf_to_fsp_flags(
 	fsp_flags |= FSP_FLAGS_SET_ATOMIC_WRITES(fsp_flags, atomic_writes);
 
 	ut_a(fsp_flags_is_valid(fsp_flags));
-	ut_a(dict_tf_verify_flags(table_flags, fsp_flags));
 
 	return(fsp_flags);
 }
