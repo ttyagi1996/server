@@ -203,9 +203,10 @@ these are only used in MySQL 5.7 and used for compatibility. */
 		(flags >> FSP_FLAGS_POS_UNUSED)
 
 /** @return the PAGE_SSIZE flags for the current innodb_page_size */
-#define FSP_FLAGS_PAGE_SSIZE()					\
-	((UNIV_PAGE_SIZE == UNIV_PAGE_SIZE_ORIG) ?		\
-	 0 : UNIV_PAGE_SIZE_SHIFT << FSP_FLAGS_POS_PAGE_SSIZE)
+#define FSP_FLAGS_PAGE_SSIZE()						\
+	((UNIV_PAGE_SIZE == UNIV_PAGE_SIZE_ORIG) ?			\
+	 0 : (UNIV_PAGE_SIZE_SHIFT - UNIV_ZIP_SIZE_SHIFT_MIN + 1)	\
+	 << FSP_FLAGS_POS_PAGE_SSIZE)
 
 /** @return the value of the DATA_DIR field */
 #define FSP_FLAGS_HAS_DATA_DIR(flags)				\
@@ -850,7 +851,7 @@ fsp_flags_is_valid(ulint flags)
 	return(true);
 }
 
-/** Convert FSP_SPACE_FLAGS from the buggy MariaDB 10.1.0 to 10.1.20 format.
+/** Convert FSP_SPACE_FLAGS from the buggy MariaDB 10.1.0..10.1.20 format.
 @param[in]	flags	the contents of FSP_SPACE_FLAGS
 @return	the flags corrected from the buggy MariaDB 10.1 format
 @retval	ULINT_UNDEFINED	if the flags are not in the buggy 10.1 format */
@@ -950,9 +951,11 @@ fsp_flags_convert_from_101(ulint flags)
 		return(ULINT_UNDEFINED);
 	}
 
-	return((flags & 0x1f) | ssize << FSP_FLAGS_POS_PAGE_SSIZE
-	       | FSP_FLAGS_GET_PAGE_COMPRESSION_MARIADB101(flags)
-	       << FSP_FLAGS_POS_PAGE_COMPRESSION);
+	flags = ((flags & 0x1f) | ssize << FSP_FLAGS_POS_PAGE_SSIZE
+		 | FSP_FLAGS_GET_PAGE_COMPRESSION_MARIADB101(flags)
+		 << FSP_FLAGS_POS_PAGE_COMPRESSION);
+	ut_ad(fsp_flags_is_valid(flags));
+	return(flags);
 }
 
 /** Compare tablespace flags.
