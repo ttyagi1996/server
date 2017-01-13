@@ -4641,6 +4641,7 @@ set names latin1;
 # Start of 10.0 tests
 #
 # Start of ctype_unescape.inc
+SET sql_mode = '';
 SET @query=_binary'SELECT CHARSET(\'test\'),@@character_set_client,@@character_set_connection';
 PREPARE stmt FROM @query;
 EXECUTE stmt;
@@ -7703,6 +7704,7 @@ DROP FUNCTION wellformedness;
 DROP FUNCTION mysql_real_escape_string_generated;
 DROP FUNCTION iswellformed;
 DROP TABLE allbytes;
+SET sql_mode = DEFAULT;
 # End of ctype_backslash.inc
 SET NAMES latin1;
 #

@@ -1755,10 +1755,12 @@ CREATE TABLE t1 (
 ALTER TABLE t1 ADD INDEX (subject); 
 
 # Alter old 'utf8' table to new 'utf8mb4'
+SET sql_mode= 'NO_ENGINE_SUBSTITUTION';
 ALTER TABLE t1
   DEFAULT CHARACTER SET utf8,
   MODIFY subject varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   MODIFY p varchar(255) CHARACTER SET utf8;
+SET sql_mode = DEFAULT;
 SHOW CREATE TABLE t1; 
 
 INSERT INTO t1(subject) VALUES ('abcd'); 

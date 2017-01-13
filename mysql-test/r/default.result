@@ -1044,7 +1044,7 @@ Table	Create Table
 t1	CREATE TABLE `t1` (
   `a` decimal(30,6) DEFAULT coalesce(current_timestamp(6))
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
-INSERT IGNORE INTO t1 VALUES();
+INSERT INTO t1 VALUES();
 Warnings:
 Warning	1265	Data truncated for column 'a' at row 1
 INSERT IGNORE INTO t1 VALUES();
@@ -1077,7 +1077,7 @@ Table	Create Table
 t1	CREATE TABLE `t1` (
   `a` decimal(30,6) DEFAULT coalesce(curdate())
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
-INSERT INTO t1 VALUES();
+INSERT IGNORE INTO t1 VALUES();
 Warnings:
 Warning	1265	Data truncated for column 'a' at row 1
 DROP TABLE t1;

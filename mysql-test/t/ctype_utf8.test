@@ -1725,6 +1725,7 @@ SELECT length(data) AS len FROM (SELECT REPEAT('ä', 65537) AS data) AS sub;
 --echo #
 CREATE TABLE t1 (i INT, KEY(i));
 INSERT INTO t1 VALUES (20081205),(20050327);
+SET sql_mode='';
 SELECT HEX(i), HEX(CHAR(i USING utf8)) FROM t1;
 SET sql_mode='STRICT_ALL_TABLES';
 SELECT HEX(i), HEX(CHAR(i USING utf8)) FROM t1;
