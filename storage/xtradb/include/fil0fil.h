@@ -819,6 +819,14 @@ fil_create_new_single_table_tablespace(
 	ulint		key_id)	/*!< in: encryption key_id */
 	__attribute__((nonnull, warn_unused_result));
 #ifndef UNIV_HOTBACKUP
+/** Try to adjust FSP_SPACE_FLAGS if they differ from the expectations.
+(Typically when upgrading from MariaDB 10.1.0..10.1.20.)
+@param[in]	space_id	tablespace ID
+@param[in]	flags		desired tablespace flags */
+UNIV_INTERN
+void
+fsp_flags_try_adjust(ulint space_id, ulint flags);
+
 /********************************************************************//**
 Tries to open a single-table tablespace and optionally checks the space id is
 right in it. If does not succeed, prints an error message to the .err log. This

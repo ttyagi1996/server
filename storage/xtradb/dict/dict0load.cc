@@ -1209,8 +1209,6 @@ loop:
 
 		btr_pcur_store_position(&pcur, &mtr);
 
-		mtr_commit(&mtr);
-
 		/* For tables created with old versions of InnoDB,
 		SYS_TABLES.MIX_LEN may contain garbage.  Such tables
 		would always be in ROW_FORMAT=REDUNDANT. Pretend that
@@ -1244,8 +1242,11 @@ loop:
 		if (space_id == 0) {
 			/* The system tablespace always exists. */
 			ut_ad(!discarded);
-			goto next_tablespace;
+			mem_free(name);
+			goto loop;
 		}
+
+		mtr_commit(&mtr);
 
 		switch (dict_check) {
 		case DICT_CHECK_ALL_LOADED:
@@ -1348,7 +1349,6 @@ loop:
 			max_space_id = space_id;
 		}
 
-next_tablespace:
 		mem_free(name);
 		mtr_start(&mtr);
 

@@ -2714,6 +2714,13 @@ files_checked:
 	}
 
 	if (!srv_read_only_mode) {
+		const ulint flags = FSP_FLAGS_PAGE_SSIZE();
+		for (ulint id = 0; id <= srv_undo_tablespaces; id++) {
+			if (fil_space_get(id)) {
+				fsp_flags_try_adjust(id, flags);
+			}
+		}
+
 		/* Create the thread which watches the timeouts
 		for lock waits */
 		thread_handles[2 + SRV_MAX_N_IO_THREADS] = os_thread_create(

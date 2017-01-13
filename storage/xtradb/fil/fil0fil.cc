@@ -648,7 +648,7 @@ fil_node_open_file(
 		ut_a(fil_is_user_tablespace_id(space->id));
 
 		if (size_bytes < FIL_IBD_FILE_INITIAL_SIZE * UNIV_PAGE_SIZE) {
-			ib_logf(IB_LOG_LEVEL_FATAL,
+			ib_logf(IB_LOG_LEVEL_ERROR,
 				"the size file %s is only " UINT64PF ","
 				" should be at least %lu!\n",
 				node->name,
@@ -3695,6 +3695,39 @@ fil_report_bad_tablespace(
 		(ulong) expected_id, (ulong) expected_flags);
 }
 
+/** Try to adjust FSP_SPACE_FLAGS if they differ from the expectations.
+(Typically when upgrading from MariaDB 10.1.0..10.1.20.)
+@param[in]	space_id	tablespace ID
+@param[in]	flags		desired tablespace flags */
+UNIV_INTERN
+void
+fsp_flags_try_adjust(ulint space_id, ulint flags)
+{
+	ut_ad(!srv_read_only_mode);
+	ut_ad(fsp_flags_is_valid(flags));
+
+	mtr_t	mtr;
+	mtr_start(&mtr);
+	if (buf_block_t* b = buf_page_get(
+		    space_id, fsp_flags_get_zip_size(flags), 0, RW_X_LATCH,
+		    &mtr)) {
+		ulint f = fsp_header_get_flags(b->frame);
+		/* Suppress the message if only the DATA_DIR flag to differs. */
+		if ((f ^ flags) & ~(1U << FSP_FLAGS_POS_RESERVED)) {
+			ib_logf(IB_LOG_LEVEL_WARN,
+				"adjusting FSP_SPACE_FLAGS of tablespace "
+				ULINTPF " from 0x%x to 0x%x",
+				space_id, int(f), int(flags));
+		}
+		if (f != flags) {
+			mlog_write_ulint(FSP_HEADER_OFFSET
+					 + FSP_SPACE_FLAGS + b->frame,
+					 flags, MLOG_4BYTES, &mtr);
+		}
+	}
+	mtr_commit(&mtr);
+}
+
 /********************************************************************//**
 Tries to open a single-table tablespace and optionally checks that the
 space id in it is correct. If this does not succeed, print an error message
@@ -4090,6 +4123,10 @@ cleanup_and_exit:
 	}
 
 	mem_free(def.filepath);
+
+	if (err == DB_SUCCESS && !srv_read_only_mode) {
+		fsp_flags_try_adjust(id, flags & ~FSP_FLAGS_MEM_MASK);
+	}
 
 	return(err);
 }
@@ -5008,19 +5045,13 @@ fil_space_for_table_exists_in_mem(
 	directory path from the datadir to the file */
 
 	fnamespace = fil_space_get_by_name(name);
-	bool match = space && fsp_flags_match(expected_flags, space->flags
-					      & ~FSP_FLAGS_MEM_MASK);
-	if (match) {
-		/* Adjust the flags that are in FSP_FLAGS_MEM_MASK.
-		FSP_SPACE_FLAGS will not be written back here. */
-		space->flags = expected_flags;
-	}
+	bool valid = space && !((space->flags ^ expected_flags)
+				& ~FSP_FLAGS_MEM_MASK);
 
 	if (!space) {
-	} else if (!match || space == fnamespace) {
+	} else if (!valid || space == fnamespace) {
 		/* Found with the same file name, or got a flag mismatch. */
-		mutex_exit(&fil_system->mutex);
-		return(match);
+		goto func_exit;
 	} else if (adjust_space
 		   && row_is_mysql_tmp_table_name(space->name)
 		   && !row_is_mysql_tmp_table_name(name)) {
@@ -5051,15 +5082,12 @@ fil_space_for_table_exists_in_mem(
 		mutex_enter(&fil_system->mutex);
 		fnamespace = fil_space_get_by_name(name);
 		ut_ad(space == fnamespace);
-		mutex_exit(&fil_system->mutex);
-		return(true);
+		goto func_exit;
 	}
 
 	if (!print_error_if_does_not_exist) {
-
-		mutex_exit(&fil_system->mutex);
-
-		return(false);
+		valid = false;
+		goto func_exit;
 	}
 
 	if (space == NULL) {
@@ -5086,10 +5114,8 @@ error_exit:
 		fputs("InnoDB: Please refer to\n"
 		      "InnoDB: " REFMAN "innodb-troubleshooting-datadict.html\n"
 		      "InnoDB: for how to resolve the issue.\n", stderr);
-
-		mutex_exit(&fil_system->mutex);
-
-		return(false);
+		valid = false;
+		goto func_exit;
 	}
 
 	if (0 != strcmp(space->name, name)) {
@@ -5116,9 +5142,19 @@ error_exit:
 		goto error_exit;
 	}
 
+func_exit:
+	if (valid) {
+		/* Adjust the flags that are in FSP_FLAGS_MEM_MASK.
+		FSP_SPACE_FLAGS will not be written back here. */
+		space->flags = expected_flags;
+	}
 	mutex_exit(&fil_system->mutex);
 
-	return(false);
+	if (valid && !srv_read_only_mode) {
+		fsp_flags_try_adjust(id, expected_flags & ~FSP_FLAGS_MEM_MASK);
+	}
+
+	return(valid);
 }
 
 /*******************************************************************//**

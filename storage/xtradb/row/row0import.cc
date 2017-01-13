@@ -548,6 +548,19 @@ AbstractCallback::init(
 	const page_t*		page = block->frame;
 
 	m_space_flags = fsp_header_get_flags(page);
+	if (!fsp_flags_is_valid(m_space_flags)) {
+		ulint cflags = fsp_flags_convert_from_101(m_space_flags);
+		if (cflags == ULINT_UNDEFINED) {
+			ib_logf(IB_LOG_LEVEL_ERROR,
+				"Invalid FSP_SPACE_FLAGS=0x%x",
+				int(m_space_flags));
+			return(DB_CORRUPTION);
+		}
+		m_space_flags = cflags;
+	}
+
+	/* Clear the DATA_DIR flag, which is basically garbage. */
+	m_space_flags &= ~(1U << FSP_FLAGS_POS_RESERVED);
 
 	/* Since we don't know whether it is a compressed table
 	or not, the data is always read into the block->frame. */
@@ -1928,20 +1941,13 @@ PageConverter::update_header(
 			"- ignored");
 	}
 
-	ulint		space_flags = fsp_header_get_flags(get_frame(block));
-
-	if (!fsp_flags_is_valid(space_flags)) {
-
-		ib_logf(IB_LOG_LEVEL_ERROR,
-			"Unsupported tablespace format %lu",
-			(ulong) space_flags);
-
-		return(DB_UNSUPPORTED);
-	}
-
 	mach_write_to_8(
 		get_frame(block) + FIL_PAGE_FILE_FLUSH_LSN_OR_KEY_VERSION,
 		m_current_lsn);
+
+	/* Write back the adjusted flags. */
+	mach_write_to_4(FSP_HEADER_OFFSET + FSP_SPACE_FLAGS
+			+ get_frame(block), m_space_flags);
 
 	/* Write space_id to the tablespace header, page 0. */
 	mach_write_to_4(
