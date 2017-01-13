@@ -294,7 +294,8 @@ struct fil_space_t {
 				tablespace whose size we do not know yet;
 				last incomplete megabytes in data files may be
 				ignored if space == 0 */
-	ulint		flags;	/*!< tablespace flags; see
+	ulint		flags;	/*!< FSP_SPACE_FLAGS and FSP_FLAGS_MEM_ flags;
+				see fsp0fsp.h,
 				fsp_flags_is_valid(),
 				fsp_flags_get_zip_size() */
 	ulint		n_reserved_extents;
@@ -446,16 +447,6 @@ fil_node_create(
 	ibool		is_raw)	/*!< in: TRUE if a raw device or
 				a raw disk partition */
 	MY_ATTRIBUTE((nonnull, warn_unused_result));
-/** Compare tablespace flags.
-Any difference in the DATA_DIRECTORY flag is ignored.
-
-@param[in]	actual		flags read from FSP_SPACE_FLAGS
-@param[in]	expected	expected tablespace flags
-@return whether the flags match */
-UNIV_INTERN
-bool
-fsp_flags_match(ulint expected, ulint actual)
-	MY_ATTRIBUTE((warn_unused_result));
 
 #ifdef UNIV_LOG_ARCHIVE
 /****************************************************************//**

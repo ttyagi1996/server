@@ -705,7 +705,8 @@ FetchIndexRootPages::operator() (
 					ER_TABLE_SCHEMA_MISMATCH,
 					"Expected FSP_SPACE_FLAGS=0x%x, .ibd "
 					"file contains 0x%x.",
-					expected, m_space_flags);
+					unsigned(expected),
+					unsigned(m_space_flags));
 				return(DB_CORRUPTION);
 			}
 		}

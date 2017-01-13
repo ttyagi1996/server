@@ -579,133 +579,6 @@ fil_node_create(
 	return(node->name);
 }
 
-/** Compare tablespace flags.
-Any difference in the DATA_DIRECTORY flag is ignored.
-
-@param[in]	actual		flags read from FSP_SPACE_FLAGS
-@param[in]	expected	expected tablespace flags
-@return whether the flags match */
-UNIV_INTERN
-bool
-fsp_flags_match(ulint expected, ulint actual)
-{
-	expected &= ~FSP_FLAGS_MEM_MASK;
-	ut_ad(fsp_flags_is_valid(expected));
-
-	if (actual == expected) {
-		return(true);
-	}
-
-	/* Ignore the DATA_DIRECTORY flag, whether it is stored in the
-	incorrect 10.1 location or in the correct location.
-	Because the tablespace file may have been relocated or imported,
-	the flag inside the file does not serve any practical purpose. */
-
-	if (FSP_FLAGS_GET_UNUSED_OLD(actual) ||
-	    !FSP_FLAGS_GET_UNUSED_MARIADB101(actual)) {
-		actual &= ~FSP_FLAGS_MASK_DATA_DIR;
-	} else {
-		actual &= ~FSP_FLAGS_MASK_DATA_DIR_MARIADB101;
-	}
-
-	if (actual == expected) {
-		return(true);
-	}
-
-	ulint   expected_unused = 0;//FIXME: FSP_FLAGS_GET_UNUSED(expected);
-	ulint   expected_antelope = FSP_FLAGS_GET_POST_ANTELOPE(expected);
-	ulint   expected_zssize = FSP_FLAGS_GET_ZIP_SSIZE(expected);
-	ulint	expected_ablobs = FSP_FLAGS_HAS_ATOMIC_BLOBS(expected);
-	// FIXME: use non-adjusting fsp_flags_get_page_size() here
-	ulint	expected_pssize = fsp_flags_get_page_size(expected);
-	ulint   expected_page_comp = FSP_FLAGS_HAS_PAGE_COMPRESSION(expected);
-
-	ulint	actual_unused = 0;//FIXME: FSP_FLAGS_GET_UNUSED(actual);
-	ulint	actual_antelope = FSP_FLAGS_GET_POST_ANTELOPE(actual);
-	ulint	actual_zssize = FSP_FLAGS_GET_ZIP_SSIZE(actual);
-	ulint	actual_ablobs = FSP_FLAGS_HAS_ATOMIC_BLOBS(actual);
-	ulint	actual_pssize = fsp_flags_get_page_size(actual);
-	ulint   actual_page_comp = FSP_FLAGS_HAS_PAGE_COMPRESSION(actual);
-
-	if (expected_unused || actual_unused) {
-		ib_logf(IB_LOG_LEVEL_FATAL,
-			"Dictionary flags %lu unused %lu or "
-			" tablespace flags %lu unused %lu corrupted\n",
-			expected, expected_unused, actual, actual_unused);
-		return (false);
-	}
-
-	if (expected_antelope != actual_antelope) {
-		ib_logf(IB_LOG_LEVEL_ERROR,
-			"Dictionary flags %lu antelope %lu "
-			" but tablespace flags %lu antelope %lu.",
-			expected, expected_antelope, actual, actual_antelope);
-		return (false);
-	}
-
-	if (expected_zssize != actual_zssize) {
-		ib_logf(IB_LOG_LEVEL_ERROR,
-			"Dictionary flags has zip_ssize %lu"
-			" but tablespace flags has zip_ssize %lu.",
-			expected_zssize, actual_zssize);
-		return (false);
-	}
-
-	if (expected_ablobs != actual_ablobs) {
-		ib_logf(IB_LOG_LEVEL_ERROR,
-			"Dictionary flags has atomic_blobs %lu"
-			" but tablespace flags has atomic_blobs %lu.",
-			expected_ablobs, actual_ablobs);
-
-		return (false);
-	}
-
-	if (expected_pssize != actual_pssize) {
-		ib_logf(IB_LOG_LEVEL_ERROR,
-			"Dictionary flags has page_size %lu"
-			" but tablespace flags has page_size %lu.",
-			expected_pssize, actual_pssize);
-
-		return (false);
-	}
-
-	/* If tablespace is created using MySQL 5.6 or MariaDB 10.0
-	or older the below flags cannot exist there. */
-	if (!FSP_FLAGS_GET_UNUSED_OLD(expected | actual)) {
-		return (true);
-	}
-
-	/* Now we need to determine what position rest of the flags
-	are. */
-
-	if (!FSP_FLAGS_GET_UNUSED_MARIADB101(actual)) {
-		/* Flags are in buggy MariaDB 10.1 old format, read them */
-		ulint actual_page_comp_level
-			= FSP_FLAGS_GET_PAGE_COMPRESSION_LEVEL_MARIADB101(
-				actual);
-		if (FSP_FLAGS_GET_ATOMIC_WRITES_MARIADB101(actual) == 3
-		    || FSP_FLAGS_GET_PAGE_COMPRESSION_MARIADB101(actual)
-		    != (actual_page_comp_level != 0)
-		    || actual_page_comp_level > 9) {
-			ib_logf(IB_LOG_LEVEL_ERROR,
-				"Invalid tablespace flags 0x%lx"
-				" (cannot be in buggy 10.1 format)",
-				actual);
-		}
-	}
-
-	if (expected_page_comp != actual_page_comp) {
-		ib_logf(IB_LOG_LEVEL_ERROR,
-			"Dictionary flags has page_compression %lu"
-			" but tablespace flags has page_compression %lu.",
-			expected_page_comp, actual_page_comp);
-
-		return (false);
-	}
-
-	return(true);
-}
-
 /********************************************************************//**
 Opens a file of a node of a tablespace. The caller must own the fil_system
 mutex.
@@ -3536,7 +3409,7 @@ fil_create_new_single_table_tablespace(
 	ibool		success;
 	/* TRUE if a table is created with CREATE TEMPORARY TABLE */
 	bool		is_temp = !!(flags2 & DICT_TF2_TEMPORARY);
-	bool		has_data_dir = FSP_FLAGS_HAS_DATA_DIR(flags);
+	bool		has_data_dir = FSP_FLAGS_HAS_DATA_DIR(flags) != 0;
 	ulint		atomic_writes = FSP_FLAGS_GET_ATOMIC_WRITES(flags);
 	fil_space_crypt_t *crypt_data = NULL;
 
@@ -3837,11 +3710,11 @@ fil_open_single_table_tablespace(
 
 	/* Table flags can be ULINT_UNDEFINED if
 	dict_tf_to_fsp_flags_failure is set. */
-	if (flags == ULINT_UNDEFINED
-	    || !fsp_flags_is_valid(flags & ~FSP_FLAGS_MEM_MASK)) {
+	if (flags == ULINT_UNDEFINED) {
 		return(DB_CORRUPTION);
 	}
 
+	ut_ad(fsp_flags_is_valid(flags & ~FSP_FLAGS_MEM_MASK));
 	atomic_writes = fsp_flags_get_atomic_writes(flags);
 
 	memset(&def, 0, sizeof(def));
@@ -3931,7 +3804,7 @@ fil_open_single_table_tablespace(
 		}
 
 		def.valid = !def.check_msg && def.id == id
-			&& fsp_flags_match(def.flags, flags);
+			&& fsp_flags_match(flags, def.flags);
 		if (def.valid) {
 			valid_tablespaces_found++;
 		} else {
@@ -3958,7 +3831,7 @@ fil_open_single_table_tablespace(
 
 		/* Validate this single-table-tablespace with SYS_TABLES. */
 		remote.valid = !remote.check_msg && remote.id == id
-			&& fsp_flags_match(remote.flags, flags);
+			&& fsp_flags_match(flags, remote.flags);
 		if (remote.valid) {
 			valid_tablespaces_found++;
 		} else {
@@ -3986,7 +3859,7 @@ fil_open_single_table_tablespace(
 
 		/* Validate this single-table-tablespace with SYS_TABLES. */
 		dict.valid = !dict.check_msg && dict.id == id
-			&& fsp_flags_match(dict.flags, flags);
+			&& fsp_flags_match(flags, dict.flags);
 
 		if (dict.valid) {
 			valid_tablespaces_found++;
