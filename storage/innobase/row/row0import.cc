@@ -1,7 +1,7 @@
 /*****************************************************************************
 
 Copyright (c) 2012, 2016, Oracle and/or its affiliates. All Rights Reserved.
-Copyright (c) 2015, 2016, MariaDB Corporation.
+Copyright (c) 2015, 2017, MariaDB Corporation.
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -371,8 +371,7 @@ public:
 		m_space(ULINT_UNDEFINED),
 		m_xdes(),
 		m_xdes_page_no(ULINT_UNDEFINED),
-		m_space_flags(ULINT_UNDEFINED),
-		m_table_flags(ULINT_UNDEFINED) UNIV_NOTHROW { }
+		m_space_flags(ULINT_UNDEFINED) UNIV_NOTHROW { }
 
 	/**
 	Free any extent descriptor instance */
@@ -535,10 +534,6 @@ protected:
 
 	/** Flags value read from the header page */
 	ulint			m_space_flags;
-
-	/** Derived from m_space_flags and row format type, the row format
-	type is determined from the page header. */
-	ulint			m_table_flags;
 };
 
 /** Determine the page size to use for traversing the tablespace
@@ -641,46 +636,6 @@ struct FetchIndexRootPages : public AbstractCallback {
 	}
 
 	/**
-	Check if the .ibd file row format is the same as the table's.
-	@param ibd_table_flags - determined from space and page.
-	@return DB_SUCCESS or error code. */
-	dberr_t check_row_format(ulint ibd_table_flags) UNIV_NOTHROW
-	{
-		dberr_t		err;
-		rec_format_t	ibd_rec_format;
-		rec_format_t	table_rec_format;
-
-		if (!dict_tf_is_valid(ibd_table_flags)) {
-
-			ib_errf(m_trx->mysql_thd, IB_LOG_LEVEL_ERROR,
-				ER_TABLE_SCHEMA_MISMATCH,
-				".ibd file has invlad table flags: %lx",
-				ibd_table_flags);
-
-			return(DB_CORRUPTION);
-		}
-
-		ibd_rec_format = dict_tf_get_rec_format(ibd_table_flags);
-		table_rec_format = dict_tf_get_rec_format(m_table->flags);
-
-		if (table_rec_format != ibd_rec_format) {
-
-			ib_errf(m_trx->mysql_thd, IB_LOG_LEVEL_ERROR,
-				ER_TABLE_SCHEMA_MISMATCH,
-				"Table has %s row format, .ibd "
-				"file has %s row format.",
-				dict_tf_to_row_format_string(m_table->flags),
-				dict_tf_to_row_format_string(ibd_table_flags));
-
-			err = DB_CORRUPTION;
-		} else {
-			err = DB_SUCCESS;
-		}
-
-		return(err);
-	}
-
-	/**
 	Called for each block as it is read from the file.
 	@param offset - physical offset in the file
 	@param block - block to convert, it is not from the buffer pool.
@@ -743,12 +698,16 @@ FetchIndexRootPages::operator() (
 		m_indexes.push_back(Index(id, page_no));
 
 		if (m_indexes.size() == 1) {
-
-			m_table_flags = dict_sys_tables_type_to_tf(
-				m_space_flags,
-				page_is_comp(page) ? DICT_N_COLS_COMPACT : 0);
-
-			err = check_row_format(m_table_flags);
+			/* Check that the tablespace flags match the table flags. */
+			ulint expected = dict_tf_to_fsp_flags(m_table->flags);
+			if (!fsp_flags_match(expected, m_space_flags)) {
+				ib_errf(m_trx->mysql_thd, IB_LOG_LEVEL_ERROR,
+					ER_TABLE_SCHEMA_MISMATCH,
+					"Expected FSP_SPACE_FLAGS=0x%x, .ibd "
+					"file contains 0x%x.",
+					expected, m_space_flags);
+				return(DB_CORRUPTION);
+			}
 		}
 	}
 

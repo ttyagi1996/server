@@ -1,7 +1,7 @@
 /*****************************************************************************
 
 Copyright (c) 1996, 2016, Oracle and/or its affiliates. All Rights Reserved.
-Copyright (c) 2013, 2016, MariaDB
+Copyright (c) 2013, 2017, MariaDB Corporation.
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -937,8 +937,9 @@ dict_tf_to_fsp_flags(
 
 	fsp_flags |= FSP_FLAGS_PAGE_SSIZE();
 
-	fsp_flags |= page_compression_level
-		<< FSP_FLAGS_POS_PAGE_COMPRESSION_LEVEL;
+	if (page_compression_level) {
+		fsp_flags |= FSP_FLAGS_MASK_PAGE_COMPRESSION;
+	}
 
 	ut_a(fsp_flags_is_valid(fsp_flags));
 
@@ -947,6 +948,7 @@ dict_tf_to_fsp_flags(
 	}
 
 	fsp_flags |= atomic_writes << FSP_FLAGS_MEM_ATOMIC_WRITES;
+	fsp_flags |= page_compression_level << FSP_FLAGS_MEM_COMPRESSION_LEVEL;
 
 	return(fsp_flags);
 }

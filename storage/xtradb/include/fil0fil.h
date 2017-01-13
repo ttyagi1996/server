@@ -45,7 +45,6 @@ Created 10/25/1995 Heikki Tuuri
 
 // Forward declaration
 struct trx_t;
-struct fil_space_t;
 
 typedef std::list<const char*> space_name_list_t;
 
@@ -264,10 +263,6 @@ struct fil_space_t {
 				an insert buffer merge request for a
 				page because it actually was for the
 				previous incarnation of the space */
-	ibool		mark;	/*!< this is set to TRUE at database startup if
-				the space corresponds to a table in the InnoDB
-				data dictionary; so we can print a warning of
-				orphaned tablespaces */
 	ibool		stop_ios;/*!< TRUE if we want to rename the
 				.ibd file of tablespace and want to
 				stop temporarily posting of new i/o
@@ -445,6 +440,17 @@ fil_node_create(
 	ibool		is_raw)	/*!< in: TRUE if a raw device or
 				a raw disk partition */
 	MY_ATTRIBUTE((nonnull, warn_unused_result));
+/** Compare tablespace flags.
+Any difference in the DATA_DIRECTORY flag is ignored.
+
+@param[in]	actual		flags read from FSP_SPACE_FLAGS
+@param[in]	expected	expected tablespace flags
+@return whether the flags match */
+UNIV_INTERN
+bool
+fsp_flags_match(ulint expected, ulint actual)
+	MY_ATTRIBUTE((warn_unused_result));
+
 #ifdef UNIV_LOG_ARCHIVE
 /****************************************************************//**
 Drops files from the start of a file space, so that its size is cut by
@@ -891,25 +897,18 @@ fil_tablespace_exists_in_mem(
 /*=========================*/
 	ulint	id);	/*!< in: space id */
 #ifndef UNIV_HOTBACKUP
-/*******************************************************************//**
-Returns TRUE if a matching tablespace exists in the InnoDB tablespace memory
+/** Check if a matching tablespace exists in the InnoDB tablespace memory
 cache. Note that if we have not done a crash recovery at the database startup,
 there may be many tablespaces which are not yet in the memory cache.
-@return	TRUE if a matching tablespace exists in the memory cache */
+@return whether a matching tablespace exists in the memory cache */
 UNIV_INTERN
-ibool
+bool
 fil_space_for_table_exists_in_mem(
 /*==============================*/
 	ulint		id,		/*!< in: space id */
 	const char*	name,		/*!< in: table name in the standard
 					'databasename/tablename' format */
-	ibool		mark_space,	/*!< in: in crash recovery, at database
-					startup we mark all spaces which have
-					an associated table in the InnoDB
-					data dictionary, so that
-					we can print a warning about orphaned
-					tablespaces */
-	ibool		print_error_if_does_not_exist,
+	bool		print_error_if_does_not_exist,
 					/*!< in: print detailed error
 					information to the .err log if a
 					matching tablespace is not found from
@@ -917,7 +916,8 @@ fil_space_for_table_exists_in_mem(
 	bool		adjust_space,	/*!< in: whether to adjust space id
 					when find table space mismatch */
 	mem_heap_t*	heap,		/*!< in: heap memory */
-	table_id_t	table_id);	/*!< in: table id */
+	table_id_t	table_id,	/*!< in: table id */
+	ulint		table_flags);	/*!< in: table flags */
 #else /* !UNIV_HOTBACKUP */
 /********************************************************************//**
 Extends all tablespaces to the size stored in the space header. During the

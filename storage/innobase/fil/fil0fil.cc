@@ -585,12 +585,12 @@ Any difference in the DATA_DIRECTORY flag is ignored.
 @param[in]	actual		flags read from FSP_SPACE_FLAGS
 @param[in]	expected	expected tablespace flags
 @return whether the flags match */
-static
+UNIV_INTERN
 bool
 fsp_flags_match(ulint expected, ulint actual)
 {
-	expected &= ~(7 << FSP_FLAGS_MEM_DATA_DIR);
-	ut_ad(!(expected & ~FSP_FLAGS_MASK));
+	expected &= ~FSP_FLAGS_MEM_MASK;
+	ut_ad(fsp_flags_is_valid(expected));
 
 	if (actual == expected) {
 		return(true);
@@ -618,16 +618,14 @@ fsp_flags_match(ulint expected, ulint actual)
 	ulint	expected_ablobs = FSP_FLAGS_HAS_ATOMIC_BLOBS(expected);
 	// FIXME: use non-adjusting fsp_flags_get_page_size() here
 	ulint	expected_pssize = fsp_flags_get_page_size(expected);
-	ulint   expected_page_comp_level = FSP_FLAGS_GET_PAGE_COMPRESSION_LEVEL(expected);
-	ulint   expected_atomic = FSP_FLAGS_GET_ATOMIC_WRITES(expected);
+	ulint   expected_page_comp = FSP_FLAGS_HAS_PAGE_COMPRESSION(expected);
 
 	ulint	actual_unused = 0;//FIXME: FSP_FLAGS_GET_UNUSED(actual);
 	ulint	actual_antelope = FSP_FLAGS_GET_POST_ANTELOPE(actual);
 	ulint	actual_zssize = FSP_FLAGS_GET_ZIP_SSIZE(actual);
 	ulint	actual_ablobs = FSP_FLAGS_HAS_ATOMIC_BLOBS(actual);
 	ulint	actual_pssize = fsp_flags_get_page_size(actual);
-	ulint   actual_page_comp_level = FSP_FLAGS_GET_PAGE_COMPRESSION_LEVEL(actual);
-	ulint   actual_atomic = FSP_FLAGS_GET_ATOMIC_WRITES(actual);
+	ulint   actual_page_comp = FSP_FLAGS_HAS_PAGE_COMPRESSION(actual);
 
 	if (expected_unused || actual_unused) {
 		ib_logf(IB_LOG_LEVEL_FATAL,
@@ -682,12 +680,13 @@ fsp_flags_match(ulint expected, ulint actual)
 
 	if (!FSP_FLAGS_GET_UNUSED_MARIADB101(actual)) {
 		/* Flags are in buggy MariaDB 10.1 old format, read them */
-		actual_page_comp_level
+		ulint actual_page_comp_level
 			= FSP_FLAGS_GET_PAGE_COMPRESSION_LEVEL_MARIADB101(
 				actual);
-		actual_atomic = FSP_FLAGS_GET_ATOMIC_WRITES_MARIADB101(actual);
-		if (FSP_FLAGS_GET_PAGE_COMPRESSION_MARIADB101(actual)
-		    != (actual_page_comp_level != 0)) {
+		if (FSP_FLAGS_GET_ATOMIC_WRITES_MARIADB101(actual) == 3
+		    || FSP_FLAGS_GET_PAGE_COMPRESSION_MARIADB101(actual)
+		    != (actual_page_comp_level != 0)
+		    || actual_page_comp_level > 9) {
 			ib_logf(IB_LOG_LEVEL_ERROR,
 				"Invalid tablespace flags 0x%lx"
 				" (cannot be in buggy 10.1 format)",
@@ -695,20 +694,11 @@ fsp_flags_match(ulint expected, ulint actual)
 		}
 	}
 
-	if (expected_page_comp_level != actual_page_comp_level) {
+	if (expected_page_comp != actual_page_comp) {
 		ib_logf(IB_LOG_LEVEL_ERROR,
-			"Dictionary flags has page_compression_level %lu"
-			" but tablespace flags has page_compression_level %lu.",
-			expected_page_comp_level, actual_page_comp_level);
-
-		return (false);
-	}
-
-	if (expected_atomic != actual_atomic) {
-		ib_logf(IB_LOG_LEVEL_ERROR,
-			"Dictionary flags has atomic_writes %lu"
-			" but tablespace flags has atomic_writes %lu.",
-			expected_atomic, actual_atomic);
+			"Dictionary flags has page_compression %lu"
+			" but tablespace flags has page_compression %lu.",
+			expected_page_comp, actual_page_comp);
 
 		return (false);
 	}
@@ -733,8 +723,6 @@ fil_node_open_file(
 	ibool		success;
 	byte*		buf2;
 	byte*		page;
-	ulint		space_id;
-	ulint		flags=0;
 	ulint		page_size;
 	ulint           atomic_writes=0;
 
@@ -808,8 +796,8 @@ fil_node_open_file(
 		success = os_file_read(node->handle, page, 0, UNIV_PAGE_SIZE);
 		srv_stats.page0_read.add(1);
 
-		space_id = fsp_header_get_space_id(page);
-		flags = fsp_header_get_flags(page);
+		const ulint space_id = fsp_header_get_space_id(page);
+		const ulint flags = fsp_header_get_flags(page);
 
 		page_size = fsp_flags_get_page_size(flags);
 		atomic_writes = fsp_flags_get_atomic_writes(flags);
@@ -827,29 +815,6 @@ fil_node_open_file(
 				" in the data dictionary\n"
 				"InnoDB: but in file %s it is %lu!\n",
 				space->id, node->name, space_id);
-
-			ut_error;
-		}
-
-		if (UNIV_UNLIKELY(space_id == ULINT_UNDEFINED
-				  || space_id == 0)) {
-			fprintf(stderr,
-				"InnoDB: Error: tablespace id %lu"
-				" in file %s is not sensible\n",
-				(ulong) space_id, node->name);
-
-			ut_error;
-		}
-
-		if (UNIV_UNLIKELY(fsp_flags_get_page_size(space->flags)
-				  != page_size)) {
-			fprintf(stderr,
-				"InnoDB: Error: tablespace file %s"
-				" has page size 0x%lx\n"
-				"InnoDB: but the data dictionary"
-				" expects page size 0x%lx!\n",
-				node->name, flags,
-				fsp_flags_get_page_size(space->flags));
 
 			ut_error;
 		}
@@ -1340,7 +1305,6 @@ fil_space_create(
 
 	fil_system->tablespace_version++;
 	space->tablespace_version = fil_system->tablespace_version;
-	space->mark = FALSE;
 
 	if (purpose == FIL_TABLESPACE && !recv_recovery_on
 	    && id > fil_system->max_assigned_id) {
@@ -3580,7 +3544,7 @@ fil_create_new_single_table_tablespace(
 	ut_ad(!srv_read_only_mode);
 	ut_a(space_id < SRV_LOG_SPACE_FIRST_ID);
 	ut_a(size >= FIL_IBD_FILE_INITIAL_SIZE);
-	ut_a(fsp_flags_is_valid(flags & FSP_FLAGS_MASK));
+	ut_a(fsp_flags_is_valid(flags & ~FSP_FLAGS_MEM_MASK));
 
 	if (is_temp) {
 		/* Temporary table filepath */
@@ -3755,7 +3719,7 @@ fil_create_new_single_table_tablespace(
 				 ? MLOG_FILE_CREATE2
 				 : MLOG_FILE_CREATE,
 				 space_id, mlog_file_flag,
-				 flags & FSP_FLAGS_MASK,
+				 flags & ~FSP_FLAGS_MEM_MASK,
 				 tablename, NULL, &mtr);
 
 		mtr_commit(&mtr);
@@ -3873,7 +3837,8 @@ fil_open_single_table_tablespace(
 
 	/* Table flags can be ULINT_UNDEFINED if
 	dict_tf_to_fsp_flags_failure is set. */
-	if (flags == ULINT_UNDEFINED || !fsp_flags_is_valid(flags)) {
+	if (flags == ULINT_UNDEFINED
+	    || !fsp_flags_is_valid(flags & ~FSP_FLAGS_MEM_MASK)) {
 		return(DB_CORRUPTION);
 	}
 
@@ -4793,6 +4758,16 @@ will_not_choose:
 	}
 	mutex_exit(&fil_system->mutex);
 #endif /* UNIV_HOTBACKUP */
+	/* Adjust the memory-based flags that would normally be set by
+	dict_tf_to_fsp_flags(). In recovery, we have no data dictionary. */
+	if (FSP_FLAGS_HAS_PAGE_COMPRESSION(fsp->flags)) {
+		fsp->flags |= page_zip_level
+			<< FSP_FLAGS_MEM_COMPRESSION_LEVEL;
+	}
+	remote.flags |= 1U << FSP_FLAGS_MEM_DATA_DIR;
+	/* We will leave atomic_writes at ATOMIC_WRITES_DEFAULT.
+	That will be adjusted in fil_space_for_table_exists_in_mem(). */
+
 	ibool file_space_create_success = fil_space_create(
 		tablename, fsp->id, fsp->flags, FIL_TABLESPACE,
 		fsp->crypt_data, false);
@@ -5084,13 +5059,12 @@ fil_report_missing_tablespace(
 		name, space_id);
 }
 
-/*******************************************************************//**
-Returns TRUE if a matching tablespace exists in the InnoDB tablespace memory
+/** Check if a matching tablespace exists in the InnoDB tablespace memory
 cache. Note that if we have not done a crash recovery at the database startup,
 there may be many tablespaces which are not yet in the memory cache.
-@return	TRUE if a matching tablespace exists in the memory cache */
+@return whether a matching tablespace exists in the memory cache */
 UNIV_INTERN
-ibool
+bool
 fil_space_for_table_exists_in_mem(
 /*==============================*/
 	ulint		id,		/*!< in: space id */
@@ -5098,13 +5072,7 @@ fil_space_for_table_exists_in_mem(
 					fil_space_create().  Either the
 					standard 'dbname/tablename' format
 					or table->dir_path_of_temp_table */
-	ibool		mark_space,	/*!< in: in crash recovery, at database
-					startup we mark all spaces which have
-					an associated table in the InnoDB
-					data dictionary, so that
-					we can print a warning about orphaned
-					tablespaces */
-	ibool		print_error_if_does_not_exist,
+	bool		print_error_if_does_not_exist,
 					/*!< in: print detailed error
 					information to the .err log if a
 					matching tablespace is not found from
@@ -5112,12 +5080,13 @@ fil_space_for_table_exists_in_mem(
 	bool		adjust_space,	/*!< in: whether to adjust space id
 					when find table space mismatch */
 	mem_heap_t*	heap,		/*!< in: heap memory */
-	table_id_t	table_id)	/*!< in: table id */
+	table_id_t	table_id,	/*!< in: table id */
+	ulint		table_flags)	/*!< in: table flags */
 {
 	fil_space_t*	fnamespace;
 	fil_space_t*	space;
 
-	ut_ad(fil_system);
+	const ulint	expected_flags = dict_tf_to_fsp_flags(table_flags);
 
 	mutex_enter(&fil_system->mutex);
 
@@ -5129,42 +5098,37 @@ fil_space_for_table_exists_in_mem(
 	directory path from the datadir to the file */
 
 	fnamespace = fil_space_get_by_name(name);
-	if (space && space == fnamespace) {
-		/* Found */
-
-		if (mark_space) {
-			space->mark = TRUE;
-		}
-
-		mutex_exit(&fil_system->mutex);
-
-		return(TRUE);
+	bool match = space && fsp_flags_match(expected_flags, space->flags
+					      & ~FSP_FLAGS_MEM_MASK);
+	if (match) {
+		/* Adjust the flags that are in FSP_FLAGS_MEM_MASK.
+		FSP_SPACE_FLAGS will not be written back here. */
+		space->flags = expected_flags;
 	}
 
-	/* Info from "fnamespace" comes from the ibd file itself, it can
-	be different from data obtained from System tables since it is
-	not transactional. If adjust_space is set, and the mismatching
-	space are between a user table and its temp table, we shall
-	adjust the ibd file name according to system table info */
-	if (adjust_space
-	    && space != NULL
-	    && row_is_mysql_tmp_table_name(space->name)
-	    && !row_is_mysql_tmp_table_name(name)) {
-
+	if (!space) {
+	} else if (!match || space == fnamespace) {
+		/* Found with the same file name, or got a flag mismatch. */
+		mutex_exit(&fil_system->mutex);
+		return(match);
+	} else if (adjust_space
+		   && row_is_mysql_tmp_table_name(space->name)
+		   && !row_is_mysql_tmp_table_name(name)) {
+		/* Info from fnamespace comes from the ibd file
+		itself, it can be different from data obtained from
+		System tables since renaming files is not
+		transactional. We shall adjust the ibd file name
+		according to system table info. */
 		mutex_exit(&fil_system->mutex);
 
 		DBUG_EXECUTE_IF("ib_crash_before_adjust_fil_space",
 				DBUG_SUICIDE(););
 
-		if (fnamespace) {
-			char*	tmp_name;
+		char*	tmp_name = dict_mem_create_temporary_tablename(
+			heap, name, table_id);
 
-			tmp_name = dict_mem_create_temporary_tablename(
-				heap, name, table_id);
-
-			fil_rename_tablespace(fnamespace->name, fnamespace->id,
-					      tmp_name, NULL);
-		}
+		fil_rename_tablespace(fnamespace->name, fnamespace->id,
+				      tmp_name, NULL);
 
 		DBUG_EXECUTE_IF("ib_crash_after_adjust_one_fil_space",
 				DBUG_SUICIDE(););
@@ -5178,15 +5142,14 @@ fil_space_for_table_exists_in_mem(
 		fnamespace = fil_space_get_by_name(name);
 		ut_ad(space == fnamespace);
 		mutex_exit(&fil_system->mutex);
-
-		return(TRUE);
+		return(true);
 	}
 
 	if (!print_error_if_does_not_exist) {
 
 		mutex_exit(&fil_system->mutex);
 
-		return(FALSE);
+		return(false);
 	}
 
 	if (space == NULL) {
@@ -5216,7 +5179,7 @@ error_exit:
 
 		mutex_exit(&fil_system->mutex);
 
-		return(FALSE);
+		return(false);
 	}
 
 	if (0 != strcmp(space->name, name)) {
@@ -5245,7 +5208,7 @@ error_exit:
 
 	mutex_exit(&fil_system->mutex);
 
-	return(FALSE);
+	return(false);
 }
 
 /*******************************************************************//**
@@ -7375,9 +7338,8 @@ fil_space_get_crypt_data(
 			byte *page = static_cast<byte*>(ut_align(buf, UNIV_PAGE_SIZE));
 			fil_read(true, space_id, 0, 0, 0, UNIV_PAGE_SIZE, page,
 				NULL, NULL);
-			ulint flags = fsp_header_get_flags(page);
 			ulint offset = fsp_header_get_crypt_offset(
-				fsp_flags_get_zip_size(flags), NULL);
+				fsp_header_get_zip_size(page), NULL);
 			space->crypt_data = fil_space_read_crypt_data(space_id, page, offset);
 			ut_free(buf);
 
