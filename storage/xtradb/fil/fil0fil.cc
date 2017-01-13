@@ -602,7 +602,6 @@ fil_node_open_file(
 	byte*		buf2;
 	byte*		page;
 	ulint		page_size;
-	ulint           atomic_writes=0;
 
 	ut_ad(mutex_own(&(system->mutex)));
 	ut_a(node->n_pending == 0);
@@ -623,8 +622,6 @@ fil_node_open_file(
 		if (!success) {
 			/* The following call prints an error message */
 			os_file_get_last_error(true);
-
-			ut_print_timestamp(stderr);
 
 			ib_logf(IB_LOG_LEVEL_WARN, "InnoDB: Error: cannot "
 				"open %s\n. InnoDB: Have you deleted .ibd "
@@ -651,17 +648,15 @@ fil_node_open_file(
 		ut_a(fil_is_user_tablespace_id(space->id));
 
 		if (size_bytes < FIL_IBD_FILE_INITIAL_SIZE * UNIV_PAGE_SIZE) {
-			fprintf(stderr,
-				"InnoDB: Error: the size of single-table"
-				" tablespace file %s\n"
-				"InnoDB: is only " UINT64PF ","
+			ib_logf(IB_LOG_LEVEL_FATAL,
+				"the size file %s is only " UINT64PF ","
 				" should be at least %lu!\n",
 				node->name,
 				size_bytes,
 				(ulong) (FIL_IBD_FILE_INITIAL_SIZE
 					 * UNIV_PAGE_SIZE));
-
-			ut_a(0);
+			os_file_close(node->handle);
+			return(false);
 		}
 
 		/* Read the first page of the tablespace */
@@ -675,32 +670,33 @@ fil_node_open_file(
 		srv_stats.page0_read.add(1);
 
 		const ulint space_id = fsp_header_get_space_id(page);
-		const ulint flags = fsp_header_get_flags(page);
-
-		page_size = fsp_flags_get_page_size(flags);
-		atomic_writes = fsp_flags_get_atomic_writes(flags);
+		ulint flags = fsp_header_get_flags(page);
 
 		ut_free(buf2);
-
-		/* Close the file now that we have read the space id from it */
-
 		os_file_close(node->handle);
 
-		if (UNIV_UNLIKELY(space_id != space->id)) {
-			fprintf(stderr,
-				"InnoDB: Error: tablespace id is %lu"
-				" in the data dictionary\n"
-				"InnoDB: but in file %s it is %lu!\n",
-				space->id, node->name, space_id);
+		if (!fsp_flags_is_valid(flags)) {
+			ulint cflags = fsp_flags_convert_from_101(flags);
+			if (cflags == ULINT_UNDEFINED) {
+				ib_logf(IB_LOG_LEVEL_ERROR,
+					"Expected flags are 0x%x"
+					" but the flags in file %s are 0x%x!\n",
+					int(space->flags), node->name,
+					int(flags));
+				return(false);
+			}
 
-			ut_error;
+			flags = cflags;
 		}
 
-		if (!fsp_flags_match(space->flags, flags)) {
-			ib_logf(IB_LOG_LEVEL_FATAL,
-				"Expected flags are 0x%lx"
-				" but the flags in file %s are 0x%lx!\n",
-				space->flags, node->name, flags);
+		page_size = fsp_flags_get_page_size(flags);
+
+		if (UNIV_UNLIKELY(space_id != space->id)) {
+			ib_logf(IB_LOG_LEVEL_ERROR,
+				"tablespace id is " ULINTPF " in the data dictionary"
+				" but in file %s it is " ULINTPF "!\n",
+				space->id, node->name, space_id);
+			return(false);
 		}
 
 		if (size_bytes >= (1024*1024)) {
@@ -722,7 +718,7 @@ add_size:
 		space->size += node->size;
 	}
 
-	atomic_writes = fsp_flags_get_atomic_writes(space->flags);
+	ulint atomic_writes = fsp_flags_get_atomic_writes(space->flags);
 
 	/* printf("Opening file %s\n", node->name); */
 
@@ -1948,26 +1944,20 @@ fil_write_flushed_lsn_to_data_files(
 	return(DB_SUCCESS);
 }
 
-/*******************************************************************//**
-Checks the consistency of the first data page of a tablespace
+/** Check the consistency of the first data page of a tablespace
 at database startup.
+@param[in]	page		page frame
+@param[in]	space_id	tablespace identifier
+@param[in]	flags		tablespace flags
 @retval NULL on success, or if innodb_force_recovery is set
 @return pointer to an error message string */
 static MY_ATTRIBUTE((warn_unused_result))
 const char*
-fil_check_first_page(
-/*=================*/
-	const page_t*	page)		/*!< in: data page */
+fil_check_first_page(const page_t* page, ulint space_id, ulint flags)
 {
-	ulint	space_id;
-	ulint	flags;
-
 	if (srv_force_recovery >= SRV_FORCE_IGNORE_CORRUPT) {
 		return(NULL);
 	}
-
-	space_id = mach_read_from_4(FSP_HEADER_OFFSET + FSP_SPACE_ID + page);
-	flags = mach_read_from_4(FSP_HEADER_OFFSET + FSP_SPACE_FLAGS + page);
 
 	if (UNIV_PAGE_SIZE != fsp_flags_get_page_size(flags)) {
 		fprintf(stderr,
@@ -2047,12 +2037,22 @@ fil_read_first_page(
 	*flags and *space_id as they were read from the first file and
 	do not validate the first page. */
 	if (!one_read_already) {
-		*flags = fsp_header_get_flags(page);
 		*space_id = fsp_header_get_space_id(page);
-	}
+		*flags = fsp_header_get_flags(page);
 
-	if (!one_read_already) {
-		check_msg = fil_check_first_page(page);
+		if (!fsp_flags_is_valid(*flags)) {
+			ulint cflags = fsp_flags_convert_from_101(*flags);
+			if (cflags == ULINT_UNDEFINED) {
+				ib_logf(IB_LOG_LEVEL_ERROR,
+					"Invalid flags 0x%x in tablespace id %u",
+					unsigned(*flags), unsigned(*space_id));
+				return "invalid tablespace flags";
+			} else {
+				*flags = cflags;
+			}
+		}
+
+		check_msg = fil_check_first_page(page, *space_id, *flags);
 	}
 
 	flushed_lsn = mach_read_from_8(page +

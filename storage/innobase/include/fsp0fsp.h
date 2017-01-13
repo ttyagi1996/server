@@ -952,7 +952,7 @@ fsp_flags_convert_from_101(ulint flags)
 		return(ULINT_UNDEFINED);
 	}
 
-	flags = ((flags & 0x1f) | ssize << FSP_FLAGS_POS_PAGE_SSIZE
+	flags = ((flags & 0x3f) | ssize << FSP_FLAGS_POS_PAGE_SSIZE
 		 | FSP_FLAGS_GET_PAGE_COMPRESSION_MARIADB101(flags)
 		 << FSP_FLAGS_POS_PAGE_COMPRESSION);
 	ut_ad(fsp_flags_is_valid(flags));
