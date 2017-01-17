@@ -323,7 +323,9 @@ DROP TABLE t1;
 # Make sure that if the first TIMESTAMP column appears to be virtual,
 # then no further promotion is done, so the next TIMESTAMP column "c" does not
 # get the "DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" attributes.
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 CREATE TABLE t1 (a DATETIME, b TIMESTAMP AS (TIMESTAMP(a)),c TIMESTAMP);
+SET sql_mode = DEFAULT;
 SHOW CREATE TABLE t1;
 DROP TABLE t1;
 

@@ -102,6 +102,7 @@ Got one of the listed errors
 show warnings;
 Level	Code	Message
 Error	1071	Specified key was too long; max key length is 767 bytes
+Error	1118	Row size too large. The maximum row size for the used table type, not counting BLOBs, is 8126. This includes storage overhead, check the manual. You have to change some columns to TEXT or BLOBs
 set global innodb_large_prefix=1;
 Warnings:
 Warning	131	Using innodb_large_prefix is deprecated and the parameter may be removed in future releases. See http://dev.mysql.com/doc/refman/5.7/en/innodb-file-format.html
@@ -110,6 +111,7 @@ Got one of the listed errors
 show warnings;
 Level	Code	Message
 Error	1071	Specified key was too long; max key length is 3072 bytes
+Error	1118	Row size too large. The maximum row size for the used table type, not counting BLOBs, is 8126. This includes storage overhead, check the manual. You have to change some columns to TEXT or BLOBs
 create index idx3 on worklog5743_1(a2(436));
 ERROR 42000: Row size too large. The maximum row size for the used table type, not counting BLOBs, is 8126. This includes storage overhead, check the manual. You have to change some columns to TEXT or BLOBs
 show warnings;
