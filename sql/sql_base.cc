@@ -842,7 +842,7 @@ void close_thread_table(THD *thd, TABLE **table_ptr)
   DBUG_ENTER("close_thread_table");
   DBUG_PRINT("tcache", ("table: '%s'.'%s' 0x%lx", table->s->db.str,
                         table->s->table_name.str, (long) table));
-  DBUG_ASSERT(table->key_read == 0);
+  DBUG_ASSERT(table->file->key_read == 0);
   DBUG_ASSERT(!table->file || table->file->inited == handler::NONE);
 
   /*
@@ -7901,7 +7901,7 @@ fill_record(THD *thd, TABLE *table_arg, List<Item> &fields, List<Item> &values,
     goto err;
   /* Update virtual fields */
   if (table_arg->vfield &&
-      table_arg->update_virtual_fields(VCOL_UPDATE_FOR_WRITE))
+      table_arg->update_virtual_fields(table_arg->file, VCOL_UPDATE_FOR_WRITE))
     goto err;
   thd->abort_on_warning= save_abort_on_warning;
   thd->no_errors=        save_no_errors;
@@ -8050,7 +8050,8 @@ fill_record_n_invoke_before_triggers(THD *thd, TABLE *table,
       if (item_field)
       {
         DBUG_ASSERT(table == item_field->field->table);
-        result|= table->update_virtual_fields(VCOL_UPDATE_FOR_WRITE);
+        result|= table->update_virtual_fields(table->file,
+                                              VCOL_UPDATE_FOR_WRITE);
       }
     }
   }
@@ -8146,7 +8147,7 @@ fill_record(THD *thd, TABLE *table, Field **ptr, List<Item> &values,
   /* Update virtual fields */
   thd->abort_on_warning= FALSE;
   if (table->vfield &&
-      table->update_virtual_fields(VCOL_UPDATE_FOR_WRITE))
+      table->update_virtual_fields(table->file, VCOL_UPDATE_FOR_WRITE))
     goto err;
   thd->abort_on_warning= abort_on_warning_saved;
   DBUG_RETURN(thd->is_error());
@@ -8200,7 +8201,7 @@ fill_record_n_invoke_before_triggers(THD *thd, TABLE *table, Field **ptr,
   {
     DBUG_ASSERT(table == (*ptr)->table);
     if (table->vfield)
-      result= table->update_virtual_fields(VCOL_UPDATE_FOR_WRITE);
+      result= table->update_virtual_fields(table->file, VCOL_UPDATE_FOR_WRITE);
   }
   return result;
 
