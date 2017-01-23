@@ -1262,6 +1262,34 @@ protected:
 
 
 #ifdef HAVE_SPATIAL
+class Create_func_geometry_from_json : public Create_native_func
+{
+public:
+  virtual Item *create_native(THD *thd, LEX_STRING name, List<Item> *item_list);
+
+  static Create_func_geometry_from_json s_singleton;
+
+protected:
+  Create_func_geometry_from_json() {}
+  virtual ~Create_func_geometry_from_json() {}
+};
+
+
+class Create_func_as_geojson : public Create_native_func
+{
+public:
+  virtual Item *create_native(THD *thd, LEX_STRING name, List<Item> *item_list);
+
+  static Create_func_as_geojson s_singleton;
+
+protected:
+  Create_func_as_geojson() {}
+  virtual ~Create_func_as_geojson() {}
+};
+#endif /*HAVE_SPATIAL*/
+
+
+#ifdef HAVE_SPATIAL
 class Create_func_geometry_type : public Create_func_arg1
 {
 public:
@@ -4533,6 +4561,84 @@ Create_func_geometry_from_wkb::create_native(THD *thd, LEX_STRING name,
 
 
 #ifdef HAVE_SPATIAL
+Create_func_geometry_from_json Create_func_geometry_from_json::s_singleton;
+
+Item*
+Create_func_geometry_from_json::create_native(THD *thd, LEX_STRING name,
+                                             List<Item> *item_list)
+{
+  Item *func= NULL;
+  int arg_count= 0;
+
+  if (item_list != NULL)
+    arg_count= item_list->elements;
+
+  switch (arg_count) {
+  case 1:
+  {
+    Item *param_1= item_list->pop();
+    func= new (thd->mem_root) Item_func_geometry_from_json(thd, param_1);
+    thd->lex->uncacheable(UNCACHEABLE_RAND);
+    break;
+  }
+  case 2:
+  {
+    Item *param_1= item_list->pop();
+    Item *param_2= item_list->pop();
+    func= new (thd->mem_root) Item_func_geometry_from_json(thd, param_1, param_2);
+    break;
+  }
+  default:
+  {
+    my_error(ER_WRONG_PARAMCOUNT_TO_NATIVE_FCT, MYF(0), name.str);
+    break;
+  }
+  }
+
+  return func;
+}
+
+
+Create_func_as_geojson Create_func_as_geojson::s_singleton;
+
+Item*
+Create_func_as_geojson::create_native(THD *thd, LEX_STRING name,
+                                             List<Item> *item_list)
+{
+  Item *func= NULL;
+  int arg_count= 0;
+
+  if (item_list != NULL)
+    arg_count= item_list->elements;
+
+  switch (arg_count) {
+  case 1:
+  {
+    Item *param_1= item_list->pop();
+    func= new (thd->mem_root) Item_func_as_geojson(thd, param_1);
+    thd->lex->uncacheable(UNCACHEABLE_RAND);
+    break;
+  }
+  case 2:
+  {
+    Item *param_1= item_list->pop();
+    Item *param_2= item_list->pop();
+    func= new (thd->mem_root) Item_func_as_geojson(thd, param_1, param_2);
+    break;
+  }
+  default:
+  {
+    my_error(ER_WRONG_PARAMCOUNT_TO_NATIVE_FCT, MYF(0), name.str);
+    break;
+  }
+  }
+
+  return func;
+}
+#endif /*HAVE_SPATIAL*/
+
+
+#ifdef HAVE_SPATIAL
 Create_func_geometry_type Create_func_geometry_type::s_singleton;
 
 Item*
@@ -6723,6 +6829,7 @@ static Native_func_registry func_array[] =
   { { C_STRING_WITH_LEN("STR_TO_DATE") }, BUILDER(Create_func_str_to_date)},
   { { C_STRING_WITH_LEN("ST_AREA") }, GEOM_BUILDER(Create_func_area)},
   { { C_STRING_WITH_LEN("ST_ASBINARY") }, GEOM_BUILDER(Create_func_as_wkb)},
+  { { C_STRING_WITH_LEN("ST_ASGEOJSON") }, GEOM_BUILDER(Create_func_as_geojson)},
   { { C_STRING_WITH_LEN("ST_ASTEXT") }, GEOM_BUILDER(Create_func_as_wkt)},
   { { C_STRING_WITH_LEN("ST_ASWKB") }, GEOM_BUILDER(Create_func_as_wkb)},
   { { C_STRING_WITH_LEN("ST_ASWKT") }, GEOM_BUILDER(Create_func_as_wkt)},
@@ -6748,6 +6855,7 @@ static Native_func_registry func_array[] =
   { { C_STRING_WITH_LEN("ST_GEOMETRYFROMWKB") }, GEOM_BUILDER(Create_func_geometry_from_wkb)},
   { { C_STRING_WITH_LEN("ST_GEOMETRYN") }, GEOM_BUILDER(Create_func_geometryn)},
   { { C_STRING_WITH_LEN("ST_GEOMETRYTYPE") }, GEOM_BUILDER(Create_func_geometry_type)},
+  { { C_STRING_WITH_LEN("ST_GEOMFROMGEOJSON") }, GEOM_BUILDER(Create_func_geometry_from_json)},
   { { C_STRING_WITH_LEN("ST_GEOMFROMTEXT") }, GEOM_BUILDER(Create_func_geometry_from_text)},
   { { C_STRING_WITH_LEN("ST_GEOMFROMWKB") }, GEOM_BUILDER(Create_func_geometry_from_wkb)},
 #ifndef DBUG_OFF

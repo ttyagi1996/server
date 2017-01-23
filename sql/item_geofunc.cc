@@ -121,6 +121,30 @@ String *Item_func_geometry_from_wkb::val_str(String *str)
 }
 
 
+String *Item_func_geometry_from_json::val_str(String *str)
+{
+  DBUG_ASSERT(fixed == 1);
+  Geometry_buffer buffer;
+  String *js= args[0]->val_str_ascii(&tmp_js);
+  uint32 srid= 0;
+
+  if ((null_value= args[0]->null_value))
+    return 0;
+
+  if ((arg_count == 2) && !args[1]->null_value)
+    srid= (uint32)args[1]->val_int();
+
+  str->set_charset(&my_charset_bin);
+  if (str->reserve(SRID_SIZE, 512))
+    return 0;
+  str->length(0);
+  str->q_append(srid);
+  if ((null_value= !Geometry::create_from_json(&buffer, js, str)))
+    return 0;
+  return str;
+}
+
+
 String *Item_func_as_wkt::val_str_ascii(String *str)
 {
   DBUG_ASSERT(fixed == 1);
@@ -166,6 +190,37 @@ String *Item_func_as_wkb::val_str(String *str)
 
   str->copy(swkb->ptr() + SRID_SIZE, swkb->length() - SRID_SIZE,
 	    &my_charset_bin);
+  return str;
+}
+
+
+void Item_func_as_geojson::fix_length_and_dec()
+{
+  collation.set(default_charset(), DERIVATION_COERCIBLE, MY_REPERTOIRE_ASCII);
+  max_length=MAX_BLOB_WIDTH;
+  maybe_null= 1;
+}
+
+
+String *Item_func_as_geojson::val_str_ascii(String *str)
+{
+  DBUG_ASSERT(fixed == 1);
+  String arg_val;
+  String *swkb= args[0]->val_str(&arg_val);
+  Geometry_buffer buffer;
+  Geometry *geom= NULL;
+  const char *dummy;
+
+  if ((null_value=
+       (args[0]->null_value ||
+	!(geom= Geometry::construct(&buffer, swkb->ptr(), swkb->length())))))
+    return 0;
+
+  str->length(0);
+  str->set_charset(&my_charset_latin1);
+  if ((null_value= geom->as_json(str, 21, &dummy)))
+    return 0;
+
   return str;
 }
 
