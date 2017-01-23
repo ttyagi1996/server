@@ -234,6 +234,8 @@ static const uchar type_keyname[]= "type";
 static const int type_keyname_len= 4;
 static const uchar coord_keyname[]= "coordinates";
 static const int coord_keyname_len= 11;
+static const uchar geometries_keyname[]= "geometries";
+static const int geometries_keyname_len= 10;
 
 
 int Geometry::as_json(String *wkt, uint max_dec_digits, const char **end)
@@ -247,8 +249,11 @@ int Geometry::as_json(String *wkt, uint max_dec_digits, const char **end)
   wkt->qs_append("\": \"", 4);
   wkt->qs_append(get_class_info()->m_name.str, len);
   wkt->qs_append("\", \"", 4);
-  if (get_class_info() != &geometrycollection_class)
+  if (get_class_info() == &geometrycollection_class)
+    wkt->qs_append((const char *) geometries_keyname, geometries_keyname_len);
+  else
     wkt->qs_append((const char *) coord_keyname, coord_keyname_len);
+
   wkt->qs_append("\": ", 3);
   if (get_data_as_json(wkt, max_dec_digits, end) ||
       wkt->reserve(1))
@@ -320,12 +325,12 @@ Geometry *Geometry::create_from_wkb(Geometry_buffer *buffer,
 
 
 Geometry *Geometry::create_from_json(Geometry_buffer *buffer,
-                                     String *js, String *res)
+                      String *js, String *res)
 {
   Class_info *ci= NULL;
-  const uchar *coord_start= NULL;
+  const uchar *coord_start= NULL, *geom_start= NULL;
   json_engine_t je;
-  json_string_t type_key, coordinates_key;
+  json_string_t type_key, coordinates_key, geometries_key;
   Geometry *result;
 
   json_string_set_cs(&type_key, js->charset());
@@ -334,6 +339,10 @@ Geometry *Geometry::create_from_json(Geometry_buffer *buffer,
   json_string_set_cs(&coordinates_key, js->charset());
   json_string_set_str(&coordinates_key, coord_keyname,
                       coord_keyname+coord_keyname_len);
+
+  json_string_set_cs(&geometries_key, js->charset());
+  json_string_set_str(&geometries_key, geometries_keyname,
+                      geometries_keyname+geometries_keyname_len);
 
   json_scan_start(&je, js->charset(), (const uchar *) js->ptr(),
                   (const uchar *) js->end());
@@ -358,7 +367,7 @@ Geometry *Geometry::create_from_json(Geometry_buffer *buffer,
 
       if (je.value_type == JSON_VALUE_STRING &&
           (ci= find_class((const char *) je.value, je.value_len)) &&
-          coord_start)
+          (coord_start= (ci == &geometrycollection_class) ? geom_start : coord_start))
         goto create_geom;
     }
     else if (!coord_start && json_key_matches(&je, &coordinates_key))
@@ -373,8 +382,27 @@ Geometry *Geometry::create_from_json(Geometry_buffer *buffer,
       if (je.value_type == JSON_VALUE_ARRAY)
       {
         coord_start= je.value_begin;
-        if (ci)
+        if (ci && ci != &geometrycollection_class)
           goto create_geom;
+      }
+    }
+    else if (!geom_start && json_key_matches(&je, &geometries_key))
+    {
+      /*
+        Found the "geometries" key. Let's check it's an array
+        and remember where it starts.
+      */
+      if (json_read_value(&je))
+        goto err_return;
+
+      if (je.value_type == JSON_VALUE_ARRAY)
+      {
+        geom_start= je.value_begin;
+        if (ci == &geometrycollection_class)
+        {
+          coord_start= geom_start;
+          goto create_geom;
+        }
       }
     }
     else
@@ -387,7 +415,8 @@ Geometry *Geometry::create_from_json(Geometry_buffer *buffer,
   if (je.s.error)
     goto err_return;
   /*
-    We didn't find all the required keys. That are "type" and "coordinates".
+    We didn't find all the required keys. That are "type" and "coordinates"
+    or "geometries" for GeometryCollection.
   */
   goto null_return;
 
@@ -402,6 +431,7 @@ create_geom:
   res->q_append((uint32) result->get_class_info()->m_type_id);
   if (result->init_from_json(&je, res))
     goto err_return;
+
   return result;
 
 err_return:
@@ -2489,11 +2519,12 @@ bool Gis_multi_polygon::get_data_as_json(String *txt, uint max_dec_digits,
   uint32 n_polygons;
   const char *data= m_data;
 
-  if (no_data(data, 4))
+  if (no_data(data, 4) || txt->reserve(1, 512))
     return 1;
   n_polygons= uint4korr(data);
   data+= 4;
 
+  txt->q_append('[');
   while (n_polygons--)
   {
     uint32 n_linear_rings;
@@ -2521,6 +2552,7 @@ bool Gis_multi_polygon::get_data_as_json(String *txt, uint max_dec_digits,
     txt->qs_append("], ", 3);
   }
   txt->length(txt->length() - 2);
+  txt->q_append(']');
   *end= data;
   return 0;
 }
@@ -2901,7 +2933,8 @@ bool Gis_geometry_collection::init_from_json(json_engine_t *je, String *wkb)
 
     DBUG_ASSERT(je->state == JST_VALUE);
 
-    if (!(g= create_from_json(&buffer, &cur_string, wkb)))
+    if (!(g= create_from_json(&buffer, &cur_string, wkb)) ||
+        json_skip_array_item(je))
       return TRUE;
 
     n_objects++;
@@ -2959,7 +2992,38 @@ exit:
 bool Gis_geometry_collection::get_data_as_json(String *txt, uint max_dec_digits,
                                                const char **end) const
 {
-  return get_data_as_wkt(txt, end);
+  uint32 n_objects;
+  Geometry_buffer buffer;
+  Geometry *geom;
+  const char *data= m_data;
+
+  if (no_data(data, 4) || txt->reserve(1, 512))
+    return 1;
+  n_objects= uint4korr(data);
+  data+= 4;
+
+  txt->qs_append('[');
+  while (n_objects--)
+  {
+    uint32 wkb_type;
+
+    if (no_data(data, WKB_HEADER_SIZE))
+      return 1;
+    wkb_type= uint4korr(data + 1);
+    data+= WKB_HEADER_SIZE;
+
+    if (!(geom= create_by_typeid(&buffer, wkb_type)))
+      return 1;
+    geom->set_data_ptr(data, (uint) (m_data_end - data));
+    if (geom->as_json(txt, max_dec_digits, &data) ||
+        txt->append(STRING_WITH_LEN(", "), 512))
+      return 1;
+  }
+  txt->length(txt->length() - 2);
+  txt->qs_append(']');
+
+  *end= data;
+  return 0;
 }
 
 
