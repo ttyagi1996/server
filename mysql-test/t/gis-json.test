@@ -20,6 +20,9 @@ SELECT st_astext(st_geomfromgeojson('{"type":"point"}'));
 SELECT st_astext(st_geomfromgeojson('{"type":"point"'));
 SELECT st_astext(st_geomfromgeojson('{"type""point"}'));
 
+SELECT st_astext(st_geomfromgeojson('{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [102.0, 0.5] } }'));
+SELECT st_astext(st_geomfromgeojson('{ "type": "FeatureCollection", "features": [{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [102.0, 0.5] }, "properties": { "prop0": "value0" } }]}'));
+
 --echo #
 --echo # End of 10.2 tests
 --echo #

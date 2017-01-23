@@ -236,6 +236,17 @@ static const uchar coord_keyname[]= "coordinates";
 static const int coord_keyname_len= 11;
 static const uchar geometries_keyname[]= "geometries";
 static const int geometries_keyname_len= 10;
+static const uchar features_keyname[]= "features";
+static const int features_keyname_len= 8;
+static const uchar geometry_keyname[]= "geometry";
+static const int geometry_keyname_len= 8;
+
+static const int max_keyname_len= 11; /*'coordinates' keyname is the longest.*/
+
+static const uchar feature_type[]= "feature";
+static const int feature_type_len= 7;
+static const uchar feature_coll_type[]= "featurecollection";
+static const int feature_coll_type_len= 17;
 
 
 int Geometry::as_json(String *wkt, uint max_dec_digits, const char **end)
@@ -328,20 +339,13 @@ Geometry *Geometry::create_from_json(Geometry_buffer *buffer,
                       json_engine_t *je, String *res)
 {
   Class_info *ci= NULL;
-  const uchar *coord_start= NULL, *geom_start= NULL;
-  json_string_t type_key, coordinates_key, geometries_key;
+  const uchar *coord_start= NULL, *geom_start= NULL,
+              *features_start= NULL, *geometry_start= NULL;
   Geometry *result;
+  uchar key_buf[max_keyname_len];
+  uint key_len;
+  int fcoll_type_found= 0, feature_type_found= 0;
 
-  json_string_set_cs(&type_key, je->s.cs);
-  json_string_set_str(&type_key, type_keyname, type_keyname+type_keyname_len);
-
-  json_string_set_cs(&coordinates_key, je->s.cs);
-  json_string_set_str(&coordinates_key, coord_keyname,
-                      coord_keyname+coord_keyname_len);
-
-  json_string_set_cs(&geometries_key, je->s.cs);
-  json_string_set_str(&geometries_key, geometries_keyname,
-                      geometries_keyname+geometries_keyname_len);
 
   if (json_read_value(je))
     goto err_return;
@@ -355,7 +359,24 @@ Geometry *Geometry::create_from_json(Geometry_buffer *buffer,
   while (json_scan_next(je) == 0 && je->state != JST_OBJ_END)
   {
     DBUG_ASSERT(je->state == JST_KEY);
-    if (!ci && json_key_matches(je, &type_key))
+
+    key_len=0;
+    while (json_read_keyname_chr(je) == 0)
+    {
+      if (je->s.c_next > 127 || key_len >= max_keyname_len)
+      {
+        /* Symbol out of range, or keyname too long. No need to compare.. */
+        key_len=0;
+        break;
+      }
+      key_buf[key_len++]= je->s.c_next | 0x20; /* make it lowercase. */
+    }
+
+    if (je->s.error)
+      goto err_return;
+
+    if (key_len == type_keyname_len &&
+        memcmp(key_buf, type_keyname, type_keyname_len) == 0)
     {
       /*
          Found the "type" key. Let's check it's a string and remember
@@ -364,12 +385,38 @@ Geometry *Geometry::create_from_json(Geometry_buffer *buffer,
       if (json_read_value(je))
         goto err_return;
 
-      if (je->value_type == JSON_VALUE_STRING &&
-          (ci= find_class((const char *) je->value, je->value_len)) &&
-          (coord_start= (ci == &geometrycollection_class) ? geom_start : coord_start))
-        goto create_geom;
+      if (je->value_type == JSON_VALUE_STRING)
+      {
+        if ((ci= find_class((const char *) je->value, je->value_len)))
+        {
+          if ((coord_start=
+                (ci == &geometrycollection_class) ? geom_start : coord_start))
+            goto create_geom;
+        }
+        else if (je->value_len == feature_coll_type_len &&
+            my_strnncoll(&my_charset_latin1, je->value, je->value_len,
+		         feature_coll_type, feature_coll_type_len) == 0)
+        {
+          /*
+            'FeatureCollection' type found. Handle the 'Featurecollection'/'features'
+            GeoJSON construction.
+          */
+          if (features_start)
+            goto handle_feature_collection;
+          fcoll_type_found= 1;
+        }
+        else if (je->value_len == feature_type_len &&
+                 my_strnncoll(&my_charset_latin1, je->value, je->value_len,
+		              feature_type, feature_type_len) == 0)
+        {
+          if (geometry_start)
+            goto handle_geometry_key;
+          feature_type_found= 1;
+        }
+      }
     }
-    else if (!coord_start && json_key_matches(je, &coordinates_key))
+    else if (key_len == coord_keyname_len &&
+             memcmp(key_buf, coord_keyname, coord_keyname_len) == 0)
     {
       /*
         Found the "coordinates" key. Let's check it's an array
@@ -385,7 +432,8 @@ Geometry *Geometry::create_from_json(Geometry_buffer *buffer,
           goto create_geom;
       }
     }
-    else if (!geom_start && json_key_matches(je, &geometries_key))
+    else if (key_len == geometries_keyname_len &&
+             memcmp(key_buf, geometries_keyname, geometries_keyname_len) == 0)
     {
       /*
         Found the "geometries" key. Let's check it's an array
@@ -402,6 +450,34 @@ Geometry *Geometry::create_from_json(Geometry_buffer *buffer,
           coord_start= geom_start;
           goto create_geom;
         }
+      }
+    }
+    else if (key_len == features_keyname_len &&
+             memcmp(key_buf, features_keyname, features_keyname_len) == 0)
+    {
+      /*
+        'features' key found. Handle the 'Featurecollection'/'features'
+        GeoJSON construction.
+      */
+      if (json_read_value(je))
+        goto err_return;
+      if (je->value_type == JSON_VALUE_ARRAY)
+      {
+        features_start= je->value_begin;
+        if (fcoll_type_found)
+          goto handle_feature_collection;
+      }
+    }
+    else if (key_len == geometry_keyname_len &&
+             memcmp(key_buf, geometry_keyname, geometry_keyname_len) == 0)
+    {
+      if (json_read_value(je))
+        goto err_return;
+      if (je->value_type == JSON_VALUE_OBJECT)
+      {
+        geometry_start= je->value_begin;
+        if (feature_type_found)
+          goto handle_geometry_key;
       }
     }
     else
@@ -421,12 +497,17 @@ Geometry *Geometry::create_from_json(Geometry_buffer *buffer,
   }
   goto err_return;
 
+handle_feature_collection:
+  ci= &geometrycollection_class;
+  coord_start= features_start;
+
 create_geom:
 
   json_scan_start(je, je->s.cs, coord_start, je->s.str_end);
 
   if (res->reserve(1 + 4, 512))
-    return NULL;
+    goto err_return;
+
   result= (*ci->m_create_func)(buffer->data);
   res->q_append((char) wkb_ndr);
   res->q_append((uint32) result->get_class_info()->m_type_id);
@@ -434,6 +515,10 @@ create_geom:
     goto err_return;
 
   return result;
+
+handle_geometry_key:
+  json_scan_start(je, je->s.cs, geometry_start, je->s.str_end);
+  return create_from_json(buffer, je, res);
 
 err_return:
   return NULL;
