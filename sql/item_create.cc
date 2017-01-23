@@ -4576,16 +4576,25 @@ Create_func_geometry_from_json::create_native(THD *thd, LEX_STRING name,
   switch (arg_count) {
   case 1:
   {
-    Item *param_1= item_list->pop();
-    func= new (thd->mem_root) Item_func_geometry_from_json(thd, param_1);
+    Item *json= item_list->pop();
+    func= new (thd->mem_root) Item_func_geometry_from_json(thd, json);
     thd->lex->uncacheable(UNCACHEABLE_RAND);
     break;
   }
   case 2:
   {
-    Item *param_1= item_list->pop();
-    Item *param_2= item_list->pop();
-    func= new (thd->mem_root) Item_func_geometry_from_json(thd, param_1, param_2);
+    Item *json= item_list->pop();
+    Item *options= item_list->pop();
+    func= new (thd->mem_root) Item_func_geometry_from_json(thd, json, options);
+    break;
+  }
+  case 3:
+  {
+    Item *json= item_list->pop();
+    Item *options= item_list->pop();
+    Item *srid= item_list->pop();
+    func= new (thd->mem_root) Item_func_geometry_from_json(thd, json, options,
+                                                           srid);
     break;
   }
   default:
@@ -4614,16 +4623,24 @@ Create_func_as_geojson::create_native(THD *thd, LEX_STRING name,
   switch (arg_count) {
   case 1:
   {
-    Item *param_1= item_list->pop();
-    func= new (thd->mem_root) Item_func_as_geojson(thd, param_1);
+    Item *geom= item_list->pop();
+    func= new (thd->mem_root) Item_func_as_geojson(thd, geom);
     thd->lex->uncacheable(UNCACHEABLE_RAND);
     break;
   }
   case 2:
   {
-    Item *param_1= item_list->pop();
-    Item *param_2= item_list->pop();
-    func= new (thd->mem_root) Item_func_as_geojson(thd, param_1, param_2);
+    Item *geom= item_list->pop();
+    Item *max_dec= item_list->pop();
+    func= new (thd->mem_root) Item_func_as_geojson(thd, geom, max_dec);
+    break;
+  }
+  case 3:
+  {
+    Item *geom= item_list->pop();
+    Item *max_dec= item_list->pop();
+    Item *options= item_list->pop();
+    func= new (thd->mem_root) Item_func_as_geojson(thd, geom, max_dec, options);
     break;
   }
   default:

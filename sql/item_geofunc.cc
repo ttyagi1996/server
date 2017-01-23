@@ -253,7 +253,7 @@ String *Item_func_as_geojson::val_str_ascii(String *str)
 
   str->length(0);
   str->set_charset(&my_charset_latin1);
-  if ((null_value= geom->as_json(str, 21, &dummy)))
+  if ((null_value= geom->as_json(str, FLOATING_POINT_DECIMALS, &dummy)))
     return 0;
 
   return str;

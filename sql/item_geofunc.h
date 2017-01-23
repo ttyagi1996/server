@@ -73,8 +73,10 @@ class Item_func_geometry_from_json: public Item_geometry_func
   String tmp_js;
 public:
   Item_func_geometry_from_json(THD *thd, Item *js): Item_geometry_func(thd, js) {}
-  Item_func_geometry_from_json(THD *thd, Item *js, Item *srid):
-    Item_geometry_func(thd, js, srid) {}
+  Item_func_geometry_from_json(THD *thd, Item *js, Item *opt):
+    Item_geometry_func(thd, js, opt) {}
+  Item_func_geometry_from_json(THD *thd, Item *js, Item *opt, Item *srid):
+    Item_geometry_func(thd, js, opt, srid) {}
   const char *func_name() const { return "st_geomfromgeojson"; }
   String *val_str(String *);
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
@@ -111,6 +113,8 @@ public:
   Item_func_as_geojson(THD *thd, Item *js): Item_str_ascii_func(thd, js) {}
   Item_func_as_geojson(THD *thd, Item *js, Item *max_dec_digits):
     Item_str_ascii_func(thd, js, max_dec_digits) {}
+  Item_func_as_geojson(THD *thd, Item *js, Item *max_dec_digits, Item *opt):
+    Item_str_ascii_func(thd, js, max_dec_digits, opt) {}
   const char *func_name() const { return "st_asgeojson"; }
   void fix_length_and_dec();
   String *val_str_ascii(String *);

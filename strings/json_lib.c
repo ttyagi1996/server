@@ -1224,23 +1224,14 @@ static int handle_match(json_engine_t *je, json_path_t *p,
 */
 int json_key_matches(json_engine_t *je, json_string_t *k)
 {
-  const uchar *je_c_str= je->s.c_str;
-  const uchar *k_c_str= k->c_str;
-
   while (json_read_keyname_chr(je) == 0)
   {
     if (json_read_string_const_chr(k) ||
         je->s.c_next != k->c_next)
-      goto exit;
+      return 0;
   }
 
-  if (json_read_string_const_chr(k))
-    return 1;
-
-exit:
-  je->s.c_str= je_c_str;
-  k->c_str= k_c_str;
-  return 0;
+  return json_read_string_const_chr(k);
 }
 
 
