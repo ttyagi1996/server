@@ -363,3 +363,13 @@ PRIMARY KEY(pk)
 ALTER TABLE t1 ADD INDEX(col_enum,vcol_int);
 ALTER TABLE t1 ADD INDEX(col_year);
 DROP TABLE t1;
+create table t1 (
+pk int primary key auto_increment,
+b bit default null,
+key(b)
+) engine=myisam;
+insert into t1 values (null, 0);
+repair table t1 extended;
+Table	Op	Msg_type	Msg_text
+test.t1	repair	status	OK
+drop table t1;
