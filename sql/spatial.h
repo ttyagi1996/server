@@ -250,6 +250,13 @@ public:
     wkb_xdr= 0,    /* Big Endian */
     wkb_ndr= 1     /* Little Endian */
   };
+  enum geojson_errors
+  {
+    GEOJ_INCORRECT_GEOJSON= 1,
+    GEOJ_TOO_FEW_POINTS= 2,
+    GEOJ_POLYGON_NOT_CLOSED= 3,
+  };
+
 
   /** Callback which creates Geometry objects on top of a given placement. */
   typedef Geometry *(*create_geom_t)(char *);
@@ -307,7 +314,7 @@ public:
   static Geometry *create_from_wkb(Geometry_buffer *buffer,
                                    const char *wkb, uint32 len, String *res);
   static Geometry *create_from_json(Geometry_buffer *buffer,
-                                    String *js, String *res);
+                                    json_engine_t *je, String *res);
   static Geometry *create_from_opresult(Geometry_buffer *g_buf,
                                   String *res, Gcalc_result_receiver &rr);
   int as_wkt(String *wkt, const char **end);

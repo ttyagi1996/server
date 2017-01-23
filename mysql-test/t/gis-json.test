@@ -16,6 +16,10 @@ SELECT st_astext(st_geomfromgeojson('{"type": "multilinestring", "coordinates": 
 SELECT st_astext(st_geomfromgeojson('{"type": "multipolygon", "coordinates": [[[[10, 10], [20, 10], [20, 20], [10, 20], [10, 10]]]]}'));
 SELECT st_astext(st_geomfromgeojson('{"type": "GeometryCollection", "geometries": [{"type": "Point","coordinates": [100.0, 0.0]}, {"type": "LineString","coordinates": [[101.0, 0.0],[102.0, 1.0]]}]}'));
 
+SELECT st_astext(st_geomfromgeojson('{"type":"point"}'));
+SELECT st_astext(st_geomfromgeojson('{"type":"point"'));
+SELECT st_astext(st_geomfromgeojson('{"type""point"}'));
+
 --echo #
 --echo # End of 10.2 tests
 --echo #
