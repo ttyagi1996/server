@@ -4471,12 +4471,6 @@ innobase_change_buffering_inited_ok:
 	}
 	*/
 
-	if (!srv_read_only_mode) {
-		mysql_thread_create(thd_destructor_thread_key,
-				    &thd_destructor_thread,
-				    NULL, thd_destructor_proxy, NULL);
-	}
-
 	/* Since we in this module access directly the fields of a trx
 	struct, and due to different headers and flags it might happen that
 	ib_mutex_t has a different size in this module and in InnoDB
@@ -4484,6 +4478,10 @@ innobase_change_buffering_inited_ok:
 	these compilation modules. */
 
 	err = innobase_start_or_create_for_mysql();
+
+	if (err != DB_SUCCESS) {
+		DBUG_RETURN(innobase_init_abort());
+	}
 
 	if (srv_buf_pool_size_org != 0) {
 		/* Set the original value back to show in help. */
@@ -4496,8 +4494,10 @@ innobase_change_buffering_inited_ok:
 			static_cast<long long>(srv_buf_pool_size);
 	}
 
-	if (err != DB_SUCCESS) {
-		DBUG_RETURN(innobase_init_abort());
+	if (!srv_read_only_mode) {
+		mysql_thread_create(thd_destructor_thread_key,
+				    &thd_destructor_thread,
+				    NULL, thd_destructor_proxy, NULL);
 	}
 
 	/* Adjust the innodb_undo_logs config object */
