@@ -221,8 +221,19 @@ static bool compare_hostname(const acl_host_and_ip *, const char *, const char *
 #define compare_hostname(X,Y,Z) 0
 #endif
 
+class ACL_USER;
+class ACL_ROLE;
+
+static bool fix_and_copy_user(LEX_USER *to, LEX_USER *from, THD *thd);
+static void update_hostname(acl_host_and_ip *host, const char *hostname);
+static ulong get_sort(uint count,...);
+static void set_user_salt(ACL_USER *acl_user, const char *password, uint password_len);
+static char *fix_plugin_ptr(char *name);
+static bool fix_user_plugin_ptr(ACL_USER *user);
+
 class ACL_ACCESS {
 public:
+  ACL_ACCESS(ulong sort, ulong access) : sort(sort), access(access) {};
   ulong sort;
   ulong access;
 };
@@ -232,14 +243,33 @@ public:
 class ACL_HOST :public ACL_ACCESS
 {
 public:
+  ACL_HOST() :
+    ACL_ACCESS(0, 0) {};
   acl_host_and_ip host;
   char *db;
 };
 
+/* various flags valid for ACL_USER */
+#define USER_IS_ROLE                 (1L << 0)
+/* Flag to mark that a ROLE is on the recursive DEPTH_FIRST_SEARCH stack */
+#define ROLE_ON_STACK            (1L << 1)
+/*
+  Flag to mark that a ROLE and all it's neighbours have
+  been visited
+*/
+#define ROLE_EXPLORED           (1L << 2)
+/* Flag to mark that on_node was already called for this role */
+#define ROLE_OPENED             (1L << 3)
+
 class ACL_USER_BASE :public ACL_ACCESS
 {
-
 public:
+  ACL_USER_BASE(const LEX_STRING& username, ulong access) :
+   ACL_ACCESS(0, access), flags(0), user(username)
+  {
+    my_init_dynamic_array(&role_grants, sizeof(ACL_ROLE *), 8, 8, MYF(0));
+  }
+
   static void *operator new(size_t size, MEM_ROOT *mem_root)
   { return (void*) alloc_root(mem_root, size); }
 
@@ -249,9 +279,35 @@ public:
   DYNAMIC_ARRAY role_grants;
 };
 
+struct SSL_specification {
+  enum SSL_type type;
+  const char *cipher, *x509_issuer, *x509_subject;
+};
+
 class ACL_USER :public ACL_USER_BASE
 {
 public:
+  ACL_USER(const LEX_STRING& hostname,
+           const LEX_STRING& username,
+           ulong access,
+           const USER_RESOURCES& user_resources,
+           const SSL_specification& ssl,
+           const LEX_STRING& plugin,
+           const LEX_STRING& auth_string,
+           const LEX_STRING& default_rolename) :
+   ACL_USER_BASE(username, access), hostname_length(hostname.length),
+   user_resource(user_resources),
+   salt_len(0),
+   ssl_type(ssl.type), ssl_cipher(ssl.cipher),
+   x509_issuer(ssl.x509_issuer), x509_subject(ssl.x509_issuer),
+   plugin(plugin), auth_string(auth_string), default_rolename(default_rolename)
+  {
+    update_hostname(&host, hostname.str);
+    fix_user_plugin_ptr(this);
+    sort= get_sort(2, host.hostname, user.str);
+    DBUG_PRINT("info", ("Found user %s", user.str));
+  }
+
   acl_host_and_ip host;
   uint hostname_length;
   USER_RESOURCES user_resource;
@@ -311,6 +367,15 @@ public:
 class ACL_ROLE :public ACL_USER_BASE
 {
 public:
+  ACL_ROLE(const LEX_STRING& username, ulong access):
+    ACL_USER_BASE(username, access), initial_role_access(access), counter(0)
+  {
+    flags|= USER_IS_ROLE;
+    (void) my_init_dynamic_array(&parent_grantee, sizeof(ACL_USER_BASE *),
+                                 8, 8, MYF(0));
+    DBUG_PRINT("info", ("Found role %s", user.str));
+  };
+
   /*
     In case of granting a role to a role, the access bits are merged together
     via a bit OR operation and placed in the ACL_USER::access field.
@@ -328,15 +393,12 @@ public:
   */
   uint  counter;
   DYNAMIC_ARRAY parent_grantee; // array of backlinks to elements granted
-
-  ACL_ROLE(ACL_USER * user, MEM_ROOT *mem);
-  ACL_ROLE(const char * rolename, ulong privileges, MEM_ROOT *mem);
-
 };
 
 class ACL_DB :public ACL_ACCESS
 {
 public:
+  ACL_DB() : ACL_ACCESS(0, 0) {};
   acl_host_and_ip host;
   char *user,*db;
   ulong initial_access; /* access bits present in the table */
@@ -349,9 +411,6 @@ ulong role_global_merges= 0, role_db_merges= 0, role_table_merges= 0,
 #endif
 
 #ifndef NO_EMBEDDED_ACCESS_CHECKS
-static bool fix_and_copy_user(LEX_USER *to, LEX_USER *from, THD *thd);
-static void update_hostname(acl_host_and_ip *host, const char *hostname);
-static ulong get_sort(uint count,...);
 static bool show_proxy_grants (THD *, const char *, const char *,
                                char *, size_t);
 static bool show_role_grants(THD *, const char *, const char *,
@@ -364,6 +423,11 @@ static bool show_table_and_column_privileges(THD *, const char *, const char *,
                                              char *, size_t);
 static int show_routine_grants(THD *, const char *, const char *, HASH *,
                                const char *, int, char *, int);
+
+static inline bool check_no_resolve()
+{
+  return specialflag & SPECIAL_NO_RESOLVE;
+}
 
 class ACL_PROXY_USER :public ACL_ACCESS
 {
@@ -382,7 +446,7 @@ class ACL_PROXY_USER :public ACL_ACCESS
     MYSQL_PROXIES_PRIV_GRANTOR,
     MYSQL_PROXIES_PRIV_TIMESTAMP } proxy_table_fields;
 public:
-  ACL_PROXY_USER () {};
+  ACL_PROXY_USER () : ACL_ACCESS(0, 0) {};
 
   void init(const char *host_arg, const char *user_arg,
        const char *proxied_host_arg, const char *proxied_user_arg,
@@ -435,9 +499,9 @@ public:
     update_hostname(&host, safe_strdup_root(mem, host_arg));
   }
 
-  bool check_validity(bool check_no_resolve)
+  bool check_validity()
   {
-    if (check_no_resolve &&
+    if (check_no_resolve() &&
         (hostname_requires_resolving(host.hostname) ||
          hostname_requires_resolving(proxied_host.hostname)))
     {
@@ -702,17 +766,6 @@ bool ROLE_GRANT_PAIR::init(MEM_ROOT *mem, char *username,
 #define DEFAULT_ROLE_COLUMN_IDX 44
 #define MAX_STATEMENT_TIME_COLUMN_IDX 45
 
-/* various flags valid for ACL_USER */
-#define IS_ROLE                 (1L << 0)
-/* Flag to mark that a ROLE is on the recursive DEPTH_FIRST_SEARCH stack */
-#define ROLE_ON_STACK            (1L << 1)
-/*
-  Flag to mark that a ROLE and all it's neighbours have
-  been visited
-*/
-#define ROLE_EXPLORED           (1L << 2)
-/* Flag to mark that on_node was already called for this role */
-#define ROLE_OPENED             (1L << 3)
 
 static DYNAMIC_ARRAY acl_hosts, acl_users, acl_dbs, acl_proxy_users;
 static HASH acl_roles;
@@ -730,8 +783,7 @@ static HASH acl_check_hosts, column_priv_hash, proc_priv_hash, func_priv_hash;
 static DYNAMIC_ARRAY acl_wild_hosts;
 static Hash_filo<acl_entry> *acl_cache;
 static uint grant_version=0; /* Version of priv tables. incremented by acl_load */
-static ulong get_access(TABLE *form,uint fieldnr, uint *next_field=0);
-static bool check_is_role(TABLE *form);
+static ulong get_access(const TABLE &form, uint fieldnr, uint *next_field=0);
 static int acl_compare(ACL_ACCESS *a,ACL_ACCESS *b);
 static ulong get_sort(uint count,...);
 static void init_check_host(void);
@@ -748,6 +800,7 @@ static bool acl_load(THD *thd, TABLE_LIST *tables);
 static bool grant_load(THD *thd, TABLE_LIST *tables);
 static inline void get_grantor(THD *thd, char* grantor);
 static bool add_role_user_mapping(const char *uname, const char *hname, const char *rname);
+static bool get_YN_as_bool(Field *field);
 
 #define ROLE_CYCLE_FOUND 2
 static int traverse_role_graph_up(ACL_ROLE *, void *,
@@ -757,6 +810,307 @@ static int traverse_role_graph_up(ACL_ROLE *, void *,
 static int traverse_role_graph_down(ACL_USER_BASE *, void *,
                              int (*) (ACL_USER_BASE *, void *),
                              int (*) (ACL_USER_BASE *, ACL_ROLE *, void *));
+
+class User_table
+{
+ public:
+  enum user_table_columns {
+    HOST= 0,
+    USER= 1,
+    PASSWORD= 2,
+    SELECT_PRIV= 3,
+    INSERT_PRIV= 4,
+    UPDATE_PRIV= 5,
+    DELETE_PRIV= 6,
+    CREATE_PRIV= 7,
+    DROP_PRIV= 8,
+    RELOAD_PRIV= 9,
+    SHUTDOWN_PRIV= 10,
+    PROCESS_PRIV= 11,
+    FILE_PRIV= 12,
+    GRANT_PRIV= 13,
+    REFERENCES_PRIV= 14,
+    INDEX_PRIV= 15,
+    ALTER_PRIV= 16,
+    SHOW_DB_PRIV= 17,
+    SUPER_PRIV= 18,
+    CREATE_TMP_TABLE_PRIV= 19,
+    LOCK_TABLES_PRIV= 20,
+    EXECUTE_PRIV= 21,
+    REPL_SLAVE_PRIV= 22,
+    REPL_CLIENT_PRIV= 23,
+    CREATE_VIEW_PRIV= 24,
+    SHOW_VIEW_PRIV= 25,
+    CREATE_ROUTINE_PRIV= 26,
+    ALTER_ROUTINE_PRIV= 27,
+    CREATE_USER_PRIV= 28,
+    EVENT_PRIV= 29,
+    TRIGGER_PRIV= 30,
+    CREATE_TABLESPACE_PRIV= 31,
+    SSL_TYPE= 32,
+    SSL_CIPHER= 33,
+    X509_ISSUER= 34,
+    X509_SUBJECT= 35,
+    MAX_QUESTIONS= 36,
+    MAX_UPDATES= 37,
+    MAX_CONNECTIONS= 38,
+    MAX_USER_CONNECTIONS= 39,
+    PLUGIN= 40,
+    AUTHENTICATION_STRING= 41,
+    PASSWORD_EXPIRED= 42,
+    IS_ROLE= 43,
+    DEFAULT_ROLE= 44,
+    MAX_STATEMENT_TIME= 45,
+    // Keep this at the end.
+    NUM_USER_TABLE_COLUMNS
+  };
+
+  static const char * const user_table_col_names[NUM_USER_TABLE_COLUMNS];
+
+  User_table(const TABLE& user_table) :
+    user_table(user_table)
+  {
+    compile_time_assert(sizeof(user_table_col_names) / sizeof(const char *) ==
+                        NUM_USER_TABLE_COLUMNS);
+    for (int i= 0; i < NUM_USER_TABLE_COLUMNS; i++) {
+      col_idx_map[i] = -1; // Mark the field as not found initially.
+      for (uint field_idx = 0; field_idx < user_table.s->fields; field_idx++) {
+        const char *field_name = user_table.field[field_idx]->field_name;
+        if (!strcasecmp(field_name, user_table_col_names[i])) {
+          col_idx_map[i] = field_idx;
+          break; // Found field.
+        }
+      }
+    }
+  };
+
+  int column_idx(enum user_table_columns column) const
+  {
+    return col_idx_map[column];
+  }
+
+  Field *column(enum user_table_columns column) const
+  {
+    int idx= column_idx(column);
+    if (idx == -1)
+      return NULL;
+
+    return user_table.field[idx];
+  }
+
+  char *get_field(enum user_table_columns column) const
+  {
+    int idx= column_idx(column);
+    if (idx == -1)
+      return NULL;
+
+    return ::get_field(&acl_memroot, user_table.field[idx]);
+  }
+
+  int get_field_as_int(enum user_table_columns column) const
+  {
+    if (column_idx(column) == -1)
+      return 0;
+
+    char buff[100];
+    String res(buff, sizeof(buff), &my_charset_latin1);
+    user_table.field[column_idx(column)]->val_str(&res);
+    return atoi(res.c_ptr_safe());
+  }
+
+  double get_field_as_double(enum user_table_columns column) const
+  {
+    if (column_idx(column) == -1)
+      return 0.0;
+
+    char buff[100];
+    String res(buff, sizeof(buff), &my_charset_latin1);
+    user_table.field[column_idx(column)]->val_str(&res);
+    return atof(res.c_ptr_safe());
+  }
+
+  bool have_password_column() const { return col_idx_map[PASSWORD] != -1; }
+
+  bool have_is_role_column() const { return col_idx_map[IS_ROLE] != -1; }
+
+  ulong get_user_access() const
+  {
+    ulong access= get_access(user_table, column_idx(SELECT_PRIV)) & GLOBAL_ACLS;
+
+#ifndef TO_BE_REMOVED
+    if (user_table.s->fields <= 13)
+    {
+      if (access & CREATE_ACL)  // Without grant
+        access|=REFERENCES_ACL | INDEX_ACL | ALTER_ACL;
+    }
+
+    if (user_table.s->fields < 31)
+    {
+      /* Convert old privileges */
+      access|= LOCK_TABLES_ACL | CREATE_TMP_ACL | SHOW_DB_ACL;
+      if (access & FILE_ACL)
+        access|= REPL_CLIENT_ACL | REPL_SLAVE_ACL;
+      if (access & PROCESS_ACL)
+        access|= SUPER_ACL | EXECUTE_ACL;
+    }
+#endif
+
+    /*
+      if it is pre 5.0.1 privilege table then map CREATE privilege on
+      CREATE VIEW & SHOW VIEW privileges
+    */
+    if (user_table.s->fields <= 31 && (access & CREATE_ACL))
+      access|= (CREATE_VIEW_ACL | SHOW_VIEW_ACL);
+
+    /*
+      if it is pre 5.0.2 privilege table then map CREATE/ALTER privilege on
+      CREATE PROCEDURE & ALTER PROCEDURE privileges
+    */
+    if (user_table.s->fields <= 33 && (access & CREATE_ACL))
+      access|= CREATE_PROC_ACL;
+    if (user_table.s->fields <= 33 && (access & ALTER_ACL))
+      access|= ALTER_PROC_ACL;
+
+    /*
+      pre 5.0.3 did not have CREATE_USER_ACL
+    */
+    if (user_table.s->fields <= 36 && (access & GRANT_ACL))
+      access|= CREATE_USER_ACL;
+
+
+    /*
+      if it is pre 5.1.6 privilege table then map CREATE privilege on
+      CREATE|ALTER|DROP|EXECUTE EVENT
+    */
+    if (user_table.s->fields <= 37 && (access & SUPER_ACL))
+      access|= EVENT_ACL;
+
+    /*
+      if it is pre 5.1.6 privilege then map TRIGGER privilege on CREATE.
+    */
+    if (user_table.s->fields <= 38 && (access & SUPER_ACL))
+      access|= TRIGGER_ACL;
+
+    return access;
+  }
+
+  SSL_specification get_user_ssl_specification() const
+  {
+    SSL_specification result;
+    char buff[100];
+    String res(buff, sizeof(buff), &my_charset_latin1);
+
+    user_table.field[column_idx(SSL_TYPE)]->val_str(&res);
+    const char *ssl_type= res.ptr();
+    if (!ssl_type || !*ssl_type)
+      result.type=SSL_TYPE_NONE;
+    else if (!strcmp(ssl_type, "ANY"))
+      result.type=SSL_TYPE_ANY;
+    else if (!strcmp(ssl_type, "X509"))
+      result.type=SSL_TYPE_X509;
+    else  /* !strcmp(ssl_type, "SPECIFIED") */
+      result.type=SSL_TYPE_SPECIFIED;
+
+    result.cipher= get_field(SSL_CIPHER);
+    result.x509_issuer= get_field(X509_ISSUER);
+    result.x509_subject= get_field(X509_SUBJECT);
+    return result;
+  }
+
+  USER_RESOURCES get_user_resources() const
+  {
+
+    USER_RESOURCES result;
+    result.questions= get_field_as_int(MAX_QUESTIONS);
+    result.updates= get_field_as_int(MAX_UPDATES);
+    result.conn_per_hour= get_field_as_int(MAX_CONNECTIONS);
+    result.user_conn= get_field_as_int(MAX_USER_CONNECTIONS);
+    result.max_statement_time= get_field_as_double(MAX_STATEMENT_TIME);
+    result.specified_limits= 0;
+    return result;
+  }
+
+  ACL_USER_BASE *read_current_entry(THD *thd) const;
+  ACL_ROLE *read_current_entry_as_role(THD *thd) const;
+
+  /*
+    Check if the current user entry in the user table is marked as being a role.
+
+    IMPLEMENTATION
+    Access the coresponding column and check the coresponding ENUM of the form
+    ENUM('N', 'Y')
+
+    SYNOPSIS
+      check_is_role()
+
+    Note: The record should be already read in user_table->record[0]
+
+    RETURN VALUE
+      TRUE      if the user is marked as a role
+      FALSE     otherwise
+  */
+  bool check_is_role() const
+  {
+    /* Table version does not support roles */
+    if (!have_is_role_column())
+      return FALSE;
+
+    return get_YN_as_bool(user_table.field[col_idx_map[IS_ROLE]]);
+  }
+
+ private:
+  const TABLE& user_table;
+  int col_idx_map[NUM_USER_TABLE_COLUMNS];
+};
+
+const char * const User_table::user_table_col_names[] = {
+  "Host",
+  "User",
+  "Password",
+  "Select_priv",
+  "Insert_priv",
+  "Update_priv",
+  "Delete_priv",
+  "Create_priv",
+  "Drop_priv",
+  "Reload_priv",
+  "Shutdown_priv",
+  "Process_priv",
+  "File_priv",
+  "Grant_priv",
+  "References_priv",
+  "Index_priv",
+  "Alter_priv",
+  "Show_db_priv",
+  "Super_priv",
+  "Create_tmp_table_priv",
+  "Lock_tables_priv",
+  "Execute_priv",
+  "Repl_slave_priv",
+  "Repl_client_priv",
+  "Create_view_priv",
+  "Show_view_priv",
+  "Create_routine_priv",
+  "Alter_routine_priv",
+  "Create_user_priv",
+  "Event_priv",
+  "Trigger_priv",
+  "Create_tablespace_priv",
+  "Ssl_type",
+  "Ssl_cipher",
+  "X509_issuer",
+  "X509_subject",
+  "Max_questions",
+  "Max_updates",
+  "Max_connections",
+  "Max_user_connections",
+  "Plugin",
+  "Authentication_string",
+  "Password_expired",
+  "Is_role",
+  "Default_role",
+  "Max_statement_time"
+};
 
 /*
  Enumeration of ACL/GRANT tables in the mysql database
@@ -823,30 +1177,6 @@ enum enum_acl_lists
   PROXY_USERS_ACL,
   ROLES_MAPPINGS_HASH
 };
-
-ACL_ROLE::ACL_ROLE(ACL_USER *user, MEM_ROOT *root) : counter(0)
-{
-
-  access= user->access;
-  /* set initial role access the same as the table row privileges */
-  initial_role_access= user->access;
-  this->user.str= safe_strdup_root(root, user->user.str);
-  this->user.length= user->user.length;
-  bzero(&role_grants, sizeof(role_grants));
-  bzero(&parent_grantee, sizeof(parent_grantee));
-  flags= IS_ROLE;
-}
-
-ACL_ROLE::ACL_ROLE(const char * rolename, ulong privileges, MEM_ROOT *root) :
-  initial_role_access(privileges), counter(0)
-{
-  this->access= initial_role_access;
-  this->user.str= safe_strdup_root(root, rolename);
-  this->user.length= strlen(rolename);
-  bzero(&role_grants, sizeof(role_grants));
-  bzero(&parent_grantee, sizeof(parent_grantee));
-  flags= IS_ROLE;
-}
 
 
 static bool is_invalid_role_name(const char *str)
@@ -970,7 +1300,6 @@ static char *fix_plugin_ptr(char *name)
   Additionally - update the salt if the plugin is built-in.
 
   @retval 0 the pointers were fixed
-  @retval 1 this ACL_USER uses a not built-in plugin
 */
 static bool fix_user_plugin_ptr(ACL_USER *user)
 {
@@ -1076,7 +1405,7 @@ static bool fix_lex_user(THD *thd, LEX_USER *user)
 }
 
 
-static bool get_YN_as_bool(Field *field)
+bool get_YN_as_bool(Field *field)
 {
   char buff[2];
   String res(buff,sizeof(buff),&my_charset_latin1);
@@ -1150,6 +1479,24 @@ bool acl_init(bool dont_read_acl_tables)
 
 /**
   Choose from either native or old password plugins when assigning a password
+  No warning side effects.
+*/
+
+static LEX_STRING get_user_plugin_from_password(int password_len)
+{
+  switch (password_len)
+  {
+  case 0: /* no password */
+  case SCRAMBLED_PASSWORD_CHAR_LENGTH:
+    return native_password_plugin_name;
+  case SCRAMBLED_PASSWORD_CHAR_LENGTH_323:
+    return old_password_plugin_name;
+  default:
+    return empty_lex_str;
+  }
+}
+/**
+  Choose from either native or old password plugins when assigning a password
 */
 
 static bool set_user_plugin (ACL_USER *user, int password_len)
@@ -1182,6 +1529,108 @@ class Sql_mode_save
   sql_mode_t old_mode; // SQL mode saved at construction time.
 };
 
+
+ACL_ROLE *User_table::read_current_entry_as_role(THD *thd) const
+{
+  LEX_STRING username;
+  username.str= safe_str(get_field(USER));
+  username.length= strlen(username.str);
+
+  if (is_invalid_role_name(username.str))
+  {
+    thd->clear_error(); // the warning is still issued
+    return NULL;
+  }
+
+  ulong access= get_user_access();
+
+  return new (&acl_memroot) ACL_ROLE(username, access);
+}
+
+ACL_USER_BASE *User_table::read_current_entry(THD *thd) const
+{
+  if (check_is_role())
+    return read_current_entry_as_role(thd);
+
+  LEX_STRING hostname;
+  LEX_STRING username;
+
+  hostname.str= safe_str(get_field(HOST));
+  hostname.length= strlen(hostname.str);
+  if (hostname.length == 0)
+    hostname = host_not_specified;
+
+  username.str= safe_str(get_field(USER));
+  username.length= strlen(username.str);
+
+  if (check_no_resolve() && hostname_requires_resolving(hostname.str))
+  {
+    sql_print_warning("'user' entry '%s@%s' "
+                      "ignored in --skip-name-resolve mode.",
+                      username.str, hostname.str);
+    return NULL;
+  }
+
+  char *password= get_field(PASSWORD);
+  uint password_len= safe_strlen(password);
+  LEX_STRING auth_string= { safe_str(password), password_len };
+  ulong access= get_user_access();
+  SSL_specification ssl= get_user_ssl_specification();
+  USER_RESOURCES resources = get_user_resources();
+  /* TODO clean this up. mqh_used ought to be set after creating the user,
+   * not as a side effect. */
+  if (resources.questions || resources.updates || resources.conn_per_hour)
+    mqh_used=1;
+
+  LEX_STRING plugin;
+  plugin.str= safe_str(get_field(PLUGIN));
+  plugin.length = strlen(plugin.str);
+  if (plugin.length)
+  {
+    auth_string.str= safe_str(get_field(AUTHENTICATION_STRING));
+    auth_string.length= strlen(auth_string.str);
+    if (auth_string.length && password_len)
+    {
+      sql_print_warning("'user' entry '%s@%s' has both a password "
+                        "and an authentication plugin specified. The "
+                        "password will be ignored.",
+                        username.str,
+                        hostname.str);
+    }
+  }
+  else
+  {
+    plugin= get_user_plugin_from_password(password_len);
+    if (!plugin.length)
+    {
+      sql_print_warning("Found invalid password for user: '%s@%s'; "
+                        "Ignoring user", username.str, hostname.str);
+      return NULL;
+    }
+  }
+
+
+  //TODO fix_user_plugin_ptr();
+
+  LEX_STRING default_role;
+  default_role.str= get_field(DEFAULT_ROLE);
+  default_role.length= safe_strlen(default_role.str);
+
+
+  // Yes allocate on the thd->mem_root for the ACL_USER. This is done
+  // due to how the global acl_users dynamic array works, by deep copying
+  // object pointers. Allocating on acl_memroot would make us store
+  // 2 identical ACL_USERS, one in the array and one directly in the root.
+  // The thd->mem_root gets freed at the end of the query.
+  return new (thd->mem_root) ACL_USER(hostname,
+                                       username,
+                                       access,
+                                       resources,
+                                       ssl,
+                                       plugin,
+                                       auth_string,
+                                       default_role);
+}
 /*
   Initialize structures responsible for user/db-level privilege checking
   and load information about grants from open privilege tables.
@@ -1202,7 +1651,6 @@ static bool acl_load(THD *thd, TABLE_LIST *tables)
 {
   TABLE *table;
   READ_RECORD read_record_info;
-  bool check_no_resolve= specialflag & SPECIAL_NO_RESOLVE;
   char tmp_name[SAFE_NAME_LEN+1];
   int password_length;
   Sql_mode_save old_mode_save(thd);
@@ -1244,10 +1692,10 @@ static bool acl_load(THD *thd, TABLE_LIST *tables)
                             "possible to remove this privilege using REVOKE.",
                             host.host.hostname, host.db);
       }
-      host.access= get_access(table,2);
+      host.access= get_access(*table,2);
       host.access= fix_rights_for_db(host.access);
       host.sort=   get_sort(2,host.host.hostname,host.db);
-      if (check_no_resolve && hostname_requires_resolving(host.host.hostname))
+      if (check_no_resolve() && hostname_requires_resolving(host.host.hostname))
       {
         sql_print_warning("'host' entry '%s|%s' "
                         "ignored in --skip-name-resolve mode.",
@@ -1275,252 +1723,73 @@ static bool acl_load(THD *thd, TABLE_LIST *tables)
     DBUG_RETURN(TRUE);
   table->use_all_columns();
 
-  username_char_length= MY_MIN(table->field[1]->char_length(),
+  User_table u_table(*table);
+  username_char_length= MY_MIN(u_table.column(User_table::USER)->char_length(),
                                USERNAME_CHAR_LENGTH);
-  password_length= table->field[2]->field_length /
-    table->field[2]->charset()->mbmaxlen;
-  if (password_length < SCRAMBLED_PASSWORD_CHAR_LENGTH_323)
+  if (u_table.have_password_column())
   {
-    sql_print_error("Fatal error: mysql.user table is damaged or in "
-                    "unsupported 3.20 format.");
-    DBUG_RETURN(TRUE);
-  }
-
-  DBUG_PRINT("info",("user table fields: %d, password length: %d",
-		     table->s->fields, password_length));
-
-  mysql_mutex_lock(&LOCK_global_system_variables);
-  if (password_length < SCRAMBLED_PASSWORD_CHAR_LENGTH)
-  {
-    if (opt_secure_auth)
+    Field *password_col= u_table.column(User_table::PASSWORD);
+    DBUG_ASSERT(password_col);
+    password_length= password_col->field_length /
+                     password_col->charset()->mbmaxlen;
+    if (password_length < SCRAMBLED_PASSWORD_CHAR_LENGTH_323)
     {
-      mysql_mutex_unlock(&LOCK_global_system_variables);
-      sql_print_error("Fatal error: mysql.user table is in old format, "
-                      "but server started with --secure-auth option.");
+      sql_print_error("Fatal error: mysql.user table is damaged or in "
+                      "unsupported 3.20 format.");
       DBUG_RETURN(TRUE);
     }
-    mysql_user_table_is_in_short_password_format= true;
-    if (global_system_variables.old_passwords)
-      mysql_mutex_unlock(&LOCK_global_system_variables);
+
+    DBUG_PRINT("info",("user table fields: %d, password length: %d",
+           table->s->fields, password_length));
+
+    mysql_mutex_lock(&LOCK_global_system_variables);
+    if (password_length < SCRAMBLED_PASSWORD_CHAR_LENGTH)
+    {
+      if (opt_secure_auth)
+      {
+        mysql_mutex_unlock(&LOCK_global_system_variables);
+        sql_print_error("Fatal error: mysql.user table is in old format, "
+                        "but server started with --secure-auth option.");
+        DBUG_RETURN(TRUE);
+      }
+      mysql_user_table_is_in_short_password_format= true;
+      if (global_system_variables.old_passwords)
+        mysql_mutex_unlock(&LOCK_global_system_variables);
+      else
+      {
+        extern sys_var *Sys_old_passwords_ptr;
+        Sys_old_passwords_ptr->value_origin= sys_var::AUTO;
+        global_system_variables.old_passwords= 1;
+        mysql_mutex_unlock(&LOCK_global_system_variables);
+        sql_print_warning("mysql.user table is not updated to new password format; "
+                          "Disabling new password usage until "
+                          "mysql_fix_privilege_tables is run");
+      }
+      thd->variables.old_passwords= 1;
+    }
     else
     {
-      extern sys_var *Sys_old_passwords_ptr;
-      Sys_old_passwords_ptr->value_origin= sys_var::AUTO;
-      global_system_variables.old_passwords= 1;
+      mysql_user_table_is_in_short_password_format= false;
       mysql_mutex_unlock(&LOCK_global_system_variables);
-      sql_print_warning("mysql.user table is not updated to new password format; "
-                        "Disabling new password usage until "
-                        "mysql_fix_privilege_tables is run");
     }
-    thd->variables.old_passwords= 1;
-  }
-  else
-  {
-    mysql_user_table_is_in_short_password_format= false;
-    mysql_mutex_unlock(&LOCK_global_system_variables);
   }
 
   allow_all_hosts=0;
   while (!(read_record_info.read_record(&read_record_info)))
   {
-    ACL_USER user;
-    bool is_role= FALSE;
-    bzero(&user, sizeof(user));
-    update_hostname(&user.host, get_field(&acl_memroot, table->field[0]));
-    char *username= get_field(&acl_memroot, table->field[1]);
-    user.user.str= username;
-    user.user.length= safe_strlen(username);
-
-    /*
-       If the user entry is a role, skip password and hostname checks
-       A user can not log in with a role so some checks are not necessary
-    */
-    is_role= check_is_role(table);
-
-    if (is_role && is_invalid_role_name(username))
-    {
-      thd->clear_error(); // the warning is still issued
+    ACL_USER_BASE *entry= u_table.read_current_entry(thd);
+    if (!entry) // Invalid entry.
       continue;
-    }
 
-    if (!is_role && check_no_resolve &&
-        hostname_requires_resolving(user.host.hostname))
+    if (u_table.check_is_role())
+      my_hash_insert(&acl_roles, (uchar *)entry);
+    else
     {
-      sql_print_warning("'user' entry '%s@%s' "
-                        "ignored in --skip-name-resolve mode.",
-                        safe_str(user.user.str),
-                        safe_str(user.host.hostname));
-      continue;
-    }
-
-    char *password= get_field(&acl_memroot, table->field[2]);
-    uint password_len= safe_strlen(password);
-    user.auth_string.str= safe_str(password);
-    user.auth_string.length= password_len;
-    set_user_salt(&user, password, password_len);
-
-    if (!is_role && set_user_plugin(&user, password_len))
-      continue;
-    
-    {
-      uint next_field;
-      user.access= get_access(table,3,&next_field) & GLOBAL_ACLS;
-      /*
-        if it is pre 5.0.1 privilege table then map CREATE privilege on
-        CREATE VIEW & SHOW VIEW privileges
-      */
-      if (table->s->fields <= 31 && (user.access & CREATE_ACL))
-        user.access|= (CREATE_VIEW_ACL | SHOW_VIEW_ACL);
-
-      /*
-        if it is pre 5.0.2 privilege table then map CREATE/ALTER privilege on
-        CREATE PROCEDURE & ALTER PROCEDURE privileges
-      */
-      if (table->s->fields <= 33 && (user.access & CREATE_ACL))
-        user.access|= CREATE_PROC_ACL;
-      if (table->s->fields <= 33 && (user.access & ALTER_ACL))
-        user.access|= ALTER_PROC_ACL;
-
-      /*
-        pre 5.0.3 did not have CREATE_USER_ACL
-      */
-      if (table->s->fields <= 36 && (user.access & GRANT_ACL))
-        user.access|= CREATE_USER_ACL;
-
-
-      /*
-        if it is pre 5.1.6 privilege table then map CREATE privilege on
-        CREATE|ALTER|DROP|EXECUTE EVENT
-      */
-      if (table->s->fields <= 37 && (user.access & SUPER_ACL))
-        user.access|= EVENT_ACL;
-
-      /*
-        if it is pre 5.1.6 privilege then map TRIGGER privilege on CREATE.
-      */
-      if (table->s->fields <= 38 && (user.access & SUPER_ACL))
-        user.access|= TRIGGER_ACL;
-
-      user.sort= get_sort(2, user.host.hostname, user.user.str);
-      user.hostname_length= safe_strlen(user.host.hostname);
-      user.user_resource.user_conn= 0;
-      user.user_resource.max_statement_time= 0.0;
-
-      /* Starting from 4.0.2 we have more fields */
-      if (table->s->fields >= 31)
-      {
-        char *ssl_type=get_field(thd->mem_root, table->field[next_field++]);
-        if (!ssl_type)
-          user.ssl_type=SSL_TYPE_NONE;
-        else if (!strcmp(ssl_type, "ANY"))
-          user.ssl_type=SSL_TYPE_ANY;
-        else if (!strcmp(ssl_type, "X509"))
-          user.ssl_type=SSL_TYPE_X509;
-        else  /* !strcmp(ssl_type, "SPECIFIED") */
-          user.ssl_type=SSL_TYPE_SPECIFIED;
-
-        user.ssl_cipher=   get_field(&acl_memroot, table->field[next_field++]);
-        user.x509_issuer=  get_field(&acl_memroot, table->field[next_field++]);
-        user.x509_subject= get_field(&acl_memroot, table->field[next_field++]);
-
-        char *ptr = get_field(thd->mem_root, table->field[next_field++]);
-        user.user_resource.questions=ptr ? atoi(ptr) : 0;
-        ptr = get_field(thd->mem_root, table->field[next_field++]);
-        user.user_resource.updates=ptr ? atoi(ptr) : 0;
-        ptr = get_field(thd->mem_root, table->field[next_field++]);
-        user.user_resource.conn_per_hour= ptr ? atoi(ptr) : 0;
-        if (user.user_resource.questions || user.user_resource.updates ||
-            user.user_resource.conn_per_hour)
-          mqh_used=1;
-
-        if (table->s->fields >= 36)
-        {
-          /* Starting from 5.0.3 we have max_user_connections field */
-          ptr= get_field(thd->mem_root, table->field[next_field++]);
-          user.user_resource.user_conn= ptr ? atoi(ptr) : 0;
-        }
-
-        if (!is_role && table->s->fields >= 41)
-        {
-          /* We may have plugin & auth_String fields */
-          char *tmpstr= get_field(&acl_memroot, table->field[next_field++]);
-          if (tmpstr)
-          {
-            user.plugin.str= tmpstr;
-            user.plugin.length= strlen(user.plugin.str);
-            user.auth_string.str=
-              safe_str(get_field(&acl_memroot, table->field[next_field++]));
-            user.auth_string.length= strlen(user.auth_string.str);
-
-            if (user.auth_string.length && password_len)
-            {
-              sql_print_warning("'user' entry '%s@%s' has both a password "
-                                "and an authentication plugin specified. The "
-                                "password will be ignored.",
-                                safe_str(user.user.str),
-                                safe_str(user.host.hostname));
-            }
-
-            fix_user_plugin_ptr(&user);
-          }
-        }
-
-        if (table->s->fields > MAX_STATEMENT_TIME_COLUMN_IDX)
-        {
-          /* Starting from 10.1.1 we can have max_statement_time */
-          ptr= get_field(thd->mem_root,
-                         table->field[MAX_STATEMENT_TIME_COLUMN_IDX]);
-          user.user_resource.max_statement_time= ptr ? atof(ptr) : 0.0;
-        }
-      }
-      else
-      {
-        user.ssl_type=SSL_TYPE_NONE;
-#ifndef TO_BE_REMOVED
-        if (table->s->fields <= 13)
-        {						// Without grant
-          if (user.access & CREATE_ACL)
-            user.access|=REFERENCES_ACL | INDEX_ACL | ALTER_ACL;
-        }
-        /* Convert old privileges */
-        user.access|= LOCK_TABLES_ACL | CREATE_TMP_ACL | SHOW_DB_ACL;
-        if (user.access & FILE_ACL)
-          user.access|= REPL_CLIENT_ACL | REPL_SLAVE_ACL;
-        if (user.access & PROCESS_ACL)
-          user.access|= SUPER_ACL | EXECUTE_ACL;
-#endif
-      }
-
-      (void) my_init_dynamic_array(&user.role_grants,sizeof(ACL_ROLE *),
-                                   8, 8, MYF(0));
-
-      /* check default role, if any */
-      if (!is_role && table->s->fields > DEFAULT_ROLE_COLUMN_IDX)
-      {
-        user.default_rolename.str=
-          get_field(&acl_memroot, table->field[DEFAULT_ROLE_COLUMN_IDX]);
-        user.default_rolename.length= safe_strlen(user.default_rolename.str);
-      }
-
-      if (is_role)
-      {
-        DBUG_PRINT("info", ("Found role %s", user.user.str));
-        ACL_ROLE *entry= new (&acl_memroot) ACL_ROLE(&user, &acl_memroot);
-        entry->role_grants = user.role_grants;
-        (void) my_init_dynamic_array(&entry->parent_grantee,
-                                     sizeof(ACL_USER_BASE *), 8, 8, MYF(0));
-        my_hash_insert(&acl_roles, (uchar *)entry);
-
-        continue;
-      }
-      else
-      {
-        DBUG_PRINT("info", ("Found user %s", user.user.str));
-        (void) push_dynamic(&acl_users,(uchar*) &user);
-      }
-      if (!user.host.hostname ||
-	  (user.host.hostname[0] == wild_many && !user.host.hostname[1]))
-        allow_all_hosts=1;			// Anyone can connect
+      push_dynamic(&acl_users, (uchar *)entry);
+      ACL_USER *user = (ACL_USER *)entry;
+      if (!user->host.hostname ||
+          (user->host.hostname[0] == wild_many && !user->host.hostname[1]))
+        allow_all_hosts=1;  // Anyone can connect.
     }
   }
   my_qsort((uchar*) dynamic_element(&acl_users,0,ACL_USER*),acl_users.elements,
@@ -1546,14 +1815,14 @@ static bool acl_load(THD *thd, TABLE_LIST *tables)
       sql_print_warning("Found an entry in the 'db' table with empty database name; Skipped");
       continue;
     }
-    if (check_no_resolve && hostname_requires_resolving(db.host.hostname))
+    if (check_no_resolve() && hostname_requires_resolving(db.host.hostname))
     {
       sql_print_warning("'db' entry '%s %s@%s' "
 		        "ignored in --skip-name-resolve mode.",
 		        db.db, safe_str(db.user), safe_str(db.host.hostname));
       continue;
     }
-    db.access=get_access(table,3);
+    db.access=get_access(*table,3);
     db.access=fix_rights_for_db(db.access);
     db.initial_access= db.access;
     if (lower_case_table_names)
@@ -1603,7 +1872,7 @@ static bool acl_load(THD *thd, TABLE_LIST *tables)
     {
       ACL_PROXY_USER proxy;
       proxy.init(table, &acl_memroot);
-      if (proxy.check_validity(check_no_resolve))
+      if (proxy.check_validity())
         continue;
       if (push_dynamic(&acl_proxy_users, (uchar*) &proxy))
         DBUG_RETURN(TRUE);
@@ -1805,16 +2074,14 @@ end:
     privilege mask
 */
 
-static ulong get_access(TABLE *form, uint fieldnr, uint *next_field)
+static ulong get_access(const TABLE &form, uint fieldnr, uint *next_field)
 {
   ulong access_bits=0,bit;
-  char buff[2];
-  String res(buff,sizeof(buff),&my_charset_latin1);
   Field **pos;
 
-  for (pos=form->field+fieldnr, bit=1;
+  for (pos=form.field+fieldnr, bit=1;
        *pos && (*pos)->real_type() == MYSQL_TYPE_ENUM &&
-	 ((Field_enum*) (*pos))->typelib->count == 2 ;
+         ((Field_enum*) (*pos))->typelib->count == 2 ;
        pos++, fieldnr++, bit<<=1)
   {
     if (get_YN_as_bool(*pos))
@@ -1825,33 +2092,6 @@ static ulong get_access(TABLE *form, uint fieldnr, uint *next_field)
   return access_bits;
 }
 
-/*
-  Check if a user entry in the user table is marked as being a role entry
-
-  IMPLEMENTATION
-  Access the coresponding column and check the coresponding ENUM of the form
-  ENUM('N', 'Y')
-
-  SYNOPSIS
-    check_is_role()
-    form      an open table to read the entry from.
-              The record should be already read in table->record[0]
-
-  RETURN VALUE
-    TRUE      if the user is marked as a role
-    FALSE     otherwise
-*/
-
-static bool check_is_role(TABLE *form)
-{
-  char buff[2];
-  String res(buff, sizeof(buff), &my_charset_latin1);
-  /* Table version does not support roles */
-  if (form->s->fields <= ROLE_ASSIGN_COLUMN_IDX)
-    return FALSE;
-
-  return get_YN_as_bool(form->field[ROLE_ASSIGN_COLUMN_IDX]);
-}
 
 
 /*
@@ -2058,7 +2298,7 @@ static int check_user_can_set_role(const char *user, const char *host,
   for (uint i=0 ; i < role->parent_grantee.elements ; i++)
   {
     acl_user_base= *(dynamic_element(&role->parent_grantee, i, ACL_USER_BASE**));
-    if (acl_user_base->flags & IS_ROLE)
+    if (acl_user_base->flags & USER_IS_ROLE)
       continue;
 
     acl_user= (ACL_USER *)acl_user_base;
@@ -2198,14 +2438,12 @@ static void acl_update_user(const char *user, const char *host,
 
 static void acl_insert_role(const char *rolename, ulong privileges)
 {
-  ACL_ROLE *entry;
 
   mysql_mutex_assert_owner(&acl_cache->lock);
-  entry= new (&acl_memroot) ACL_ROLE(rolename, privileges, &acl_memroot);
-  (void) my_init_dynamic_array(&entry->parent_grantee,
-                               sizeof(ACL_USER_BASE *), 8, 8, MYF(0));
-  (void) my_init_dynamic_array(&entry->role_grants,sizeof(ACL_ROLE *),
-                               8, 8, MYF(0));
+  LEX_STRING role;
+  role.str = safe_strdup_root(&acl_memroot, rolename);
+  role.length = strlen(role.str);
+  ACL_ROLE *entry= new (&acl_memroot) ACL_ROLE(role, privileges);
 
   my_hash_insert(&acl_roles, (uchar *)entry);
 }
@@ -2222,50 +2460,63 @@ static void acl_insert_user(const char *user, const char *host,
 			    const LEX_STRING *plugin,
 			    const LEX_STRING *auth)
 {
-  ACL_USER acl_user;
-
+  DBUG_ENTER("acl_insert_user");
   mysql_mutex_assert_owner(&acl_cache->lock);
 
-  bzero(&acl_user, sizeof(acl_user));
-  acl_user.user.str=*user ? strdup_root(&acl_memroot,user) : 0;
-  acl_user.user.length= strlen(user);
-  update_hostname(&acl_user.host, safe_strdup_root(&acl_memroot, host));
+  LEX_STRING username= { *user ? strdup_root(&acl_memroot,user) : 0,
+                          strlen(user) };
+  LEX_STRING hostname= { safe_strdup_root(&acl_memroot, host),
+                         safe_strlen(host) };
+  LEX_STRING user_plugin;
+  LEX_STRING auth_string;
+  //update_hostname(&acl_user.host, safe_strdup_root(&acl_memroot, host));
   if (plugin->str[0])
   {
-    acl_user.plugin= *plugin;
-    acl_user.auth_string.str= auth->str ?
+    user_plugin= *plugin;
+    auth_string.str= auth->str ?
       strmake_root(&acl_memroot, auth->str, auth->length) : const_cast<char*>("");
-    acl_user.auth_string.length= auth->length;
-    if (fix_user_plugin_ptr(&acl_user))
-      acl_user.plugin.str= strmake_root(&acl_memroot, plugin->str, plugin->length);
+    auth_string.length= auth->length;
+    /* Make sure to save plugin string in acl_memroot if this is a custom
+       plugin. */
+    if (my_strcasecmp(system_charset_info, user_plugin.str,
+                      native_password_plugin_name.str) &&
+        my_strcasecmp(system_charset_info, user_plugin.str,
+                       old_password_plugin_name.str))
+      user_plugin.str= strmake_root(&acl_memroot, plugin->str, plugin->length);
   }
   else
   {
-    acl_user.auth_string.str= strmake_root(&acl_memroot, password, password_len);
-    acl_user.auth_string.length= password_len;
-    set_user_salt(&acl_user, password, password_len);
-    set_user_plugin(&acl_user, password_len);
+    auth_string.str= strmake_root(&acl_memroot, password, password_len);
+    auth_string.length= password_len;
+    user_plugin= get_user_plugin_from_password(password_len);
   }
 
-  acl_user.flags= 0;
-  acl_user.access=privileges;
-  acl_user.user_resource = *mqh;
-  acl_user.sort=get_sort(2, acl_user.host.hostname, acl_user.user.str);
-  acl_user.hostname_length=(uint) strlen(host);
-  acl_user.ssl_type= (ssl_type != SSL_TYPE_NOT_SPECIFIED ?
-		      ssl_type : SSL_TYPE_NONE);
-  acl_user.ssl_cipher=	ssl_cipher   ? strdup_root(&acl_memroot,ssl_cipher) : 0;
-  acl_user.x509_issuer= x509_issuer  ? strdup_root(&acl_memroot,x509_issuer) : 0;
-  acl_user.x509_subject=x509_subject ? strdup_root(&acl_memroot,x509_subject) : 0;
-  (void) my_init_dynamic_array(&acl_user.role_grants, sizeof(ACL_USER *),
-                               8, 8, MYF(0));
+  SSL_specification ssl;
+  ssl.type= (ssl_type != SSL_TYPE_NOT_SPECIFIED ? ssl_type : SSL_TYPE_NONE);
+  ssl.cipher=	ssl_cipher   ? strdup_root(&acl_memroot,ssl_cipher) : 0;
+  ssl.x509_issuer= x509_issuer  ? strdup_root(&acl_memroot,x509_issuer) : 0;
+  ssl.x509_subject=x509_subject ? strdup_root(&acl_memroot,x509_subject) : 0;
 
+  // TODO(cvicentiu) Perhaps it makes sense to allow inserting a user with
+  // a default rolename specified.
+  LEX_STRING default_rolename;
+  default_rolename.str = const_cast<char *>("");
+  default_rolename.length = 0;
+
+  ACL_USER acl_user(hostname,
+                    username,
+                    privileges,
+                    *mqh,
+                    ssl,
+                    user_plugin,
+                    auth_string,
+                    default_rolename);
   (void) push_dynamic(&acl_users,(uchar*) &acl_user);
   if (!acl_user.host.hostname ||
       (acl_user.host.hostname[0] == wild_many && !acl_user.host.hostname[1]))
-    allow_all_hosts=1;		// Anyone can connect /* purecov: tested */
+    allow_all_hosts=1;  // Anyone can connect /* purecov: tested */
   my_qsort((uchar*) dynamic_element(&acl_users,0,ACL_USER*),acl_users.elements,
-	   sizeof(ACL_USER),(qsort_cmp) acl_compare);
+           sizeof(ACL_USER),(qsort_cmp) acl_compare);
 
   /* Rebuild 'acl_check_hosts' since 'acl_users' has been modified */
   rebuild_check_host();
@@ -2275,6 +2526,7 @@ static void acl_insert_user(const char *user, const char *host,
     and old pointers to ACL_USER elements are no longer valid
   */
   rebuild_role_grants();
+  DBUG_VOID_RETURN;
 }
 
 
@@ -2568,7 +2820,7 @@ static bool add_role_user_mapping(const char *uname, const char *hname,
     we can increment them here, and after the rebuild all counters will
     have correct values (equal to the number of roles granted).
   */
-  if (grantee->flags & IS_ROLE)
+  if (grantee->flags & USER_IS_ROLE)
     ((ACL_ROLE*)grantee)->counter++;
   return add_role_user_mapping(grantee, role);
 }
@@ -2799,7 +3051,6 @@ bool change_password(THD *thd, LEX_USER *user)
     thd->set_query(buff, query_length, system_charset_info);
     WSREP_TO_ISOLATION_BEGIN(WSREP_MYSQL_DB, (char*)"user", NULL);
   }
-
   if ((result= open_grant_tables(thd, tables, TL_WRITE, Table_user)))
     DBUG_RETURN(result != 1);
 
@@ -3220,12 +3471,19 @@ static bool compare_hostname(const acl_host_and_ip *host, const char *hostname,
 
 bool hostname_requires_resolving(const char *hostname)
 {
+  /* NULL hostname is equivalent to "%", thus it requires resolving.
+     Check update_hostname. */
   if (!hostname)
-    return FALSE;
+    return TRUE;
 
   /* Check if hostname is the localhost. */
 
   size_t hostname_len= strlen(hostname);
+
+  /* Empty hostname is equivalent to "%", thus it requires resolving. */
+  if (hostname_len == 0)
+    return TRUE;
+
   size_t localhost_len= strlen(my_localhost);
 
   if (hostname == my_localhost ||
@@ -3475,7 +3733,7 @@ static int replace_user_table(THD *thd, TABLE *table, LEX_USER &combo,
     if (priv & rights)				 // set requested privileges
       (*tmp_field)->store(&what, 1, &my_charset_latin1);
   }
-  rights= get_access(table, 3, &next_field);
+  rights= get_access(*table, 3, &next_field);
   DBUG_PRINT("info",("table fields: %d",table->s->fields));
   if (combo.pwhash.str[0])
     table->field[2]->store(combo.pwhash.str, combo.pwhash.length, system_charset_info);
@@ -3568,7 +3826,8 @@ static int replace_user_table(THD *thd, TABLE *table, LEX_USER &combo,
     /* table format checked earlier */
     if (handle_as_role)
     {
-      if (old_row_exists && !check_is_role(table))
+      User_table u_table(*table);
+      if (old_row_exists && !u_table.check_is_role())
       {
         goto end;
       }
@@ -3714,7 +3973,7 @@ static int replace_db_table(TABLE *table, const char *db,
     if (priv & store_rights)			// do it if priv is chosen
       table->field [i]->store(&what,1, &my_charset_latin1);// set requested privileges
   }
-  rights=get_access(table,3);
+  rights=get_access(*table,3);
   rights=fix_rights_for_db(rights);
 
   if (old_row_exists)
@@ -5027,11 +5286,11 @@ static int traverse_role_graph_impl(ACL_USER_BASE *user, void *context,
     uint i;
     DYNAMIC_ARRAY *array= (DYNAMIC_ARRAY *)(((char*)current) + offset);
 
-    DBUG_ASSERT(array == &current->role_grants || current->flags & IS_ROLE);
+    DBUG_ASSERT(array == &current->role_grants || current->flags & USER_IS_ROLE);
     for (i= curr_state->neigh_idx; i < array->elements; i++)
     {
       neighbour= *(dynamic_element(array, i, ACL_ROLE**));
-      if (!(neighbour->flags & IS_ROLE))
+      if (!(neighbour->flags & USER_IS_ROLE))
         continue;
 
       DBUG_PRINT("info", ("Examining neighbour role %s", neighbour->user.str));
@@ -6156,7 +6415,7 @@ static int can_grant_role_callback(ACL_USER_BASE *grantee,
   if (role != (ACL_ROLE*)data)
     return 0; // keep searching
 
-  if (grantee->flags & IS_ROLE)
+  if (grantee->flags & USER_IS_ROLE)
     pair= find_role_grant_pair(&grantee->user, &empty_lex_str, &role->user);
   else
   {
@@ -6599,7 +6858,6 @@ static bool grant_load(THD *thd, TABLE_LIST *tables)
 {
   bool return_val= 1;
   TABLE *t_table, *c_table, *p_table;
-  bool check_no_resolve= specialflag & SPECIAL_NO_RESOLVE;
   MEM_ROOT *save_mem_root= thd->mem_root;
   sql_mode_t old_sql_mode= thd->variables.sql_mode;
   DBUG_ENTER("grant_load");
@@ -6638,7 +6896,7 @@ static bool grant_load(THD *thd, TABLE_LIST *tables)
 	goto end_unlock;
       }
 
-      if (check_no_resolve)
+      if (check_no_resolve())
       {
 	if (hostname_requires_resolving(mem_check->host.hostname))
 	{
@@ -6683,7 +6941,7 @@ static bool grant_load(THD *thd, TABLE_LIST *tables)
           goto end_unlock_p;
         }
 
-        if (check_no_resolve)
+        if (check_no_resolve())
         {
           if (hostname_requires_resolving(mem_check->host.hostname))
           {
@@ -7935,7 +8193,7 @@ end:
 static int show_grants_callback(ACL_USER_BASE *role, void *data)
 {
   THD *thd= (THD *)data;
-  DBUG_ASSERT(role->flags & IS_ROLE);
+  DBUG_ASSERT(role->flags & USER_IS_ROLE);
   if (print_grants_for_role(thd, (ACL_ROLE *)role))
     return -1;
   return 0;
@@ -8102,7 +8360,7 @@ static bool show_role_grants(THD *thd, const char *username,
     grant.append(STRING_WITH_LEN(" TO '"));
     grant.append(acl_entry->user.str, acl_entry->user.length,
                   system_charset_info);
-    if (!(acl_entry->flags & IS_ROLE))
+    if (!(acl_entry->flags & USER_IS_ROLE))
     {
       grant.append(STRING_WITH_LEN("'@'"));
       grant.append(&host);
@@ -8795,6 +9053,7 @@ static int handle_grant_table(THD *thd, TABLE_LIST *tables,
   table->use_all_columns();
   if (table_no == USER_TABLE) // mysql.user table
   {
+    User_table u_table(*table);
     /*
       The 'user' table has an unique index on (host, user).
       Thus, we can handle everything with a single index access.
@@ -8818,7 +9077,7 @@ static int handle_grant_table(THD *thd, TABLE_LIST *tables,
                                               HA_READ_KEY_EXACT);
     if (!error && !*host_str)
     { // verify that we got a role or a user, as needed
-      if (check_is_role(table) != user_from->is_role())
+      if (u_table.check_is_role() != user_from->is_role())
         error= HA_ERR_KEY_NOT_FOUND;
     }
     if (error)
@@ -10488,7 +10747,7 @@ show_proxy_grants(THD *thd, const char *username, const char *hostname,
 static int enabled_roles_insert(ACL_USER_BASE *role, void *context_data)
 {
   TABLE *table= (TABLE*) context_data;
-  DBUG_ASSERT(role->flags & IS_ROLE);
+  DBUG_ASSERT(role->flags & USER_IS_ROLE);
 
   restore_record(table, s->default_values);
   table->field[0]->set_notnull();
