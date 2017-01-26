@@ -210,11 +210,14 @@ DROP TABLE t1,t2;
 # Bug #31928: Search fails on '1000-00-00' date after sql_mode change
 #
 
+# Unset NO_ZERO modes for the initial stage,
+# because they make the test meaningless
+SET SQL_MODE='';
 CREATE TABLE t1 (a DATE);
 CREATE TABLE t2 (a DATE);
 CREATE INDEX i ON t1 (a);
-INSERT IGNORE INTO t1 VALUES ('1000-00-00'),('1000-00-00');
-INSERT IGNORE INTO t2 VALUES ('1000-00-00'),('1000-00-00');
+INSERT INTO t1 VALUES ('1000-00-00'),('1000-00-00');
+INSERT INTO t2 VALUES ('1000-00-00'),('1000-00-00');
 SELECT * FROM t1 WHERE a = '1000-00-00';
 SELECT * FROM t2 WHERE a = '1000-00-00';
 SET SQL_MODE=TRADITIONAL;

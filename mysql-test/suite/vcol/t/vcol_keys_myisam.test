@@ -108,6 +108,7 @@ drop table t1;
 --echo # MDEV-11606 Server crashes in mi_make_key / sort_key_read
 --echo #
 
+SET STATEMENT sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' FOR
 CREATE TABLE t1 ( 
  pk BIGINT AUTO_INCREMENT,
  col_date DATE NULL,

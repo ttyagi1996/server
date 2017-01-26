@@ -456,12 +456,15 @@ SELECT CAST(CAST('2008-07-29T10:42:51.1234567' AS DateTime(6)) AS DECIMAL(30,7))
 --echo # Bug#59173: Failure to handle DATE(TIME) values where Year, Month or
 --echo # Day is ZERO 
 --echo # 
+# Unset NO_ZERO modes, because they make the test meaningless
+SET SQL_MODE='';
 CREATE TABLE t1 (dt1 DATETIME);
-INSERT IGNORE INTO t1 (dt1) VALUES ('0000-00-01 00:00:01');
+INSERT INTO t1 (dt1) VALUES ('0000-00-01 00:00:01');
 DELETE   FROM t1 WHERE dt1 = '0000-00-01 00:00:01';
 --echo # Should be empty
 SELECT * FROM t1;
 DROP TABLE t1;
+SET SQL_MODE=DEFAULT;
 
 --echo End of 5.1 tests
 

@@ -537,6 +537,7 @@ Warning	1292	Truncated incorrect INTEGER value: 'a'
 DROP TABLE t;
 set sql_mode= @save_old_sql_mode;
 # Bug#21875520 Problems with virtual column indexes
+SET STATEMENT sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' FOR
 CREATE TABLE t(
 a TIMESTAMP,
 b BLOB,

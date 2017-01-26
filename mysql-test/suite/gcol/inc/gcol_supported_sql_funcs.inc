@@ -15,7 +15,9 @@
 
 --enable_warnings
 set sql_warnings = 1;
-eval create table t1 ($cols);
+eval 
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
+create table t1 ($cols);
 show create table t1;
 if ($rows)
 {

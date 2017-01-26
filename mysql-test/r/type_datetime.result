@@ -672,16 +672,15 @@ Note	1292	Truncated incorrect datetime value: '2008-07-29T10:42:51.1234567'
 # Bug#59173: Failure to handle DATE(TIME) values where Year, Month or
 # Day is ZERO 
 # 
+SET SQL_MODE='';
 CREATE TABLE t1 (dt1 DATETIME);
-INSERT IGNORE INTO t1 (dt1) VALUES ('0000-00-01 00:00:01');
-Warnings:
-Warning	1265	Data truncated for column 'dt1' at row 1
+INSERT INTO t1 (dt1) VALUES ('0000-00-01 00:00:01');
 DELETE   FROM t1 WHERE dt1 = '0000-00-01 00:00:01';
 # Should be empty
 SELECT * FROM t1;
 dt1
-0000-00-00 00:00:00
 DROP TABLE t1;
+SET SQL_MODE=DEFAULT;
 End of 5.1 tests
 SET timestamp=UNIX_TIMESTAMP('2001-01-01 10:20:30');
 create table t1 (d date, t time) engine=myisam;

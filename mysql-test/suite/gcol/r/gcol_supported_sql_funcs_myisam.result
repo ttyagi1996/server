@@ -5,6 +5,7 @@ set time_zone="+03:00";
 #
 # ABS()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (abs(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -20,6 +21,7 @@ drop table t1;
 set sql_warnings = 0;
 # ACOS()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(acos(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -39,6 +41,7 @@ drop table t1;
 set sql_warnings = 0;
 # ASIN()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(asin(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -56,6 +59,7 @@ drop table t1;
 set sql_warnings = 0;
 #ATAN
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double, c double generated always as (format(atan(a,b),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -73,6 +77,7 @@ a	b	c
 drop table t1;
 set sql_warnings = 0;
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, c double generated always as (format(atan(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -90,6 +95,7 @@ drop table t1;
 set sql_warnings = 0;
 # ATAN2
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double, c double generated always as (format(atan2(a,b),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -108,6 +114,7 @@ drop table t1;
 set sql_warnings = 0;
 # CEIL()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b int generated always as (ceil(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -125,6 +132,7 @@ drop table t1;
 set sql_warnings = 0;
 # CONV()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b int, c int, d varchar(10) generated always as (conv(a,b,c)) virtual);
 show create table t1;
 Table	Create Table
@@ -148,6 +156,7 @@ drop table t1;
 set sql_warnings = 0;
 # COS()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(cos(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -163,6 +172,7 @@ drop table t1;
 set sql_warnings = 0;
 # COT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(cot(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -179,6 +189,7 @@ drop table t1;
 set sql_warnings = 0;
 # CRC32()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b bigint generated always as (crc32(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -196,6 +207,7 @@ drop table t1;
 set sql_warnings = 0;
 # DEGREES()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(degrees(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -213,6 +225,7 @@ drop table t1;
 set sql_warnings = 0;
 # /
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (a/2) virtual);
 show create table t1;
 Table	Create Table
@@ -228,6 +241,7 @@ drop table t1;
 set sql_warnings = 0;
 # EXP()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(exp(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -247,6 +261,7 @@ drop table t1;
 set sql_warnings = 0;
 # FLOOR()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b bigint generated always as (floor(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -264,6 +279,7 @@ drop table t1;
 set sql_warnings = 0;
 # LN()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(ln(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -285,6 +301,7 @@ drop table t1;
 set sql_warnings = 0;
 # LOG()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double, c double generated always as (format(log(a,b),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -308,6 +325,7 @@ Warnings:
 drop table t1;
 set sql_warnings = 0;
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(log(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -329,6 +347,7 @@ drop table t1;
 set sql_warnings = 0;
 # LOG2()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(log2(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -350,6 +369,7 @@ drop table t1;
 set sql_warnings = 0;
 # LOG10()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(log10(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -373,6 +393,7 @@ drop table t1;
 set sql_warnings = 0;
 # -
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (a-1) virtual);
 show create table t1;
 Table	Create Table
@@ -388,6 +409,7 @@ drop table t1;
 set sql_warnings = 0;
 # MOD()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (mod(a,10)) virtual);
 show create table t1;
 Table	Create Table
@@ -405,6 +427,7 @@ drop table t1;
 set sql_warnings = 0;
 # %
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (a % 10) virtual);
 show create table t1;
 Table	Create Table
@@ -422,6 +445,7 @@ drop table t1;
 set sql_warnings = 0;
 # OCT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b varchar(10) generated always as (oct(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -437,6 +461,7 @@ drop table t1;
 set sql_warnings = 0;
 # PI()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(PI()*a*a,6)) virtual);
 show create table t1;
 Table	Create Table
@@ -452,6 +477,7 @@ drop table t1;
 set sql_warnings = 0;
 # +
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (a+1) virtual);
 show create table t1;
 Table	Create Table
@@ -467,6 +493,7 @@ drop table t1;
 set sql_warnings = 0;
 # POW, POWER
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (pow(a,2)) virtual, c int generated always as (power(a,2)) virtual);
 show create table t1;
 Table	Create Table
@@ -485,6 +512,7 @@ drop table t1;
 set sql_warnings = 0;
 # RADIANS()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(radians(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -500,6 +528,7 @@ drop table t1;
 set sql_warnings = 0;
 # ROUND()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b int generated always as (round(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -518,6 +547,7 @@ a	b
 drop table t1;
 set sql_warnings = 0;
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double, c int generated always as (round(a,b)) virtual);
 show create table t1;
 Table	Create Table
@@ -538,6 +568,7 @@ drop table t1;
 set sql_warnings = 0;
 # SIGN()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b int generated always as (sign(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -557,6 +588,7 @@ drop table t1;
 set sql_warnings = 0;
 # SIN()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(sin(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -572,6 +604,7 @@ drop table t1;
 set sql_warnings = 0;
 # SQRT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(sqrt(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -591,6 +624,7 @@ drop table t1;
 set sql_warnings = 0;
 # TAN()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (format(tan(a),6)) virtual);
 show create table t1;
 Table	Create Table
@@ -608,6 +642,7 @@ drop table t1;
 set sql_warnings = 0;
 # *
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (a*3) virtual);
 show create table t1;
 Table	Create Table
@@ -627,6 +662,7 @@ drop table t1;
 set sql_warnings = 0;
 # TRUNCATE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (truncate(a,4)) virtual);
 show create table t1;
 Table	Create Table
@@ -648,6 +684,7 @@ drop table t1;
 set sql_warnings = 0;
 # Unary -
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b double generated always as (-a) virtual);
 show create table t1;
 Table	Create Table
@@ -668,6 +705,7 @@ set sql_warnings = 0;
 #
 # ASCII()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a char(2), b int generated always as (ascii(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -687,6 +725,7 @@ drop table t1;
 set sql_warnings = 0;
 # BIN()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b varchar(10) generated always as (bin(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -702,6 +741,7 @@ drop table t1;
 set sql_warnings = 0;
 # BIT_LENGTH()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b bigint generated always as (bit_length(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -717,6 +757,7 @@ drop table t1;
 set sql_warnings = 0;
 # CHAR_LENGTH()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b bigint generated always as (char_length(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -732,6 +773,7 @@ drop table t1;
 set sql_warnings = 0;
 # CHAR()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int, c varbinary(10) generated always as (char(a,b)) virtual);
 show create table t1;
 Table	Create Table
@@ -748,6 +790,7 @@ drop table t1;
 set sql_warnings = 0;
 # CHARACTER_LENGTH()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b bigint generated always as (character_length(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -763,6 +806,7 @@ drop table t1;
 set sql_warnings = 0;
 # CONCAT_WS()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c varchar(20) generated always as (concat_ws(',',a,b)) virtual);
 show create table t1;
 Table	Create Table
@@ -779,6 +823,7 @@ drop table t1;
 set sql_warnings = 0;
 # CONCAT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c varchar(20) generated always as (concat(a,',',b)) virtual);
 show create table t1;
 Table	Create Table
@@ -795,6 +840,7 @@ drop table t1;
 set sql_warnings = 0;
 # ELT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c int, d varchar(10) generated always as (elt(c,a,b)) virtual);
 show create table t1;
 Table	Create Table
@@ -814,6 +860,7 @@ drop table t1;
 set sql_warnings = 0;
 # EXPORT_SET()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b varchar(10) generated always as (export_set(a,'1','0','',10)) virtual);
 show create table t1;
 Table	Create Table
@@ -829,6 +876,7 @@ drop table t1;
 set sql_warnings = 0;
 # FIELD()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c int generated always as (field('aa',a,b)) virtual);
 show create table t1;
 Table	Create Table
@@ -847,6 +895,7 @@ drop table t1;
 set sql_warnings = 0;
 # FIND_IN_SET()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c int generated always as (find_in_set(a,b)) virtual);
 show create table t1;
 Table	Create Table
@@ -865,6 +914,7 @@ drop table t1;
 set sql_warnings = 0;
 # FORMAT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a double, b varchar(20) generated always as (format(a,2)) virtual);
 show create table t1;
 Table	Create Table
@@ -880,6 +930,7 @@ drop table t1;
 set sql_warnings = 0;
 # HEX()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b varchar(10) generated always as (hex(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -894,6 +945,7 @@ a	b
 drop table t1;
 set sql_warnings = 0;
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (hex(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -909,6 +961,7 @@ drop table t1;
 set sql_warnings = 0;
 # INSERT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c varchar(20) generated always as (insert(a,length(a),length(b),b)) virtual);
 show create table t1;
 Table	Create Table
@@ -925,6 +978,7 @@ drop table t1;
 set sql_warnings = 0;
 # INSTR()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c int generated always as (instr(a,b)) virtual);
 show create table t1;
 Table	Create Table
@@ -943,6 +997,7 @@ drop table t1;
 set sql_warnings = 0;
 # LCASE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (lcase(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -958,6 +1013,7 @@ drop table t1;
 set sql_warnings = 0;
 # LEFT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(5) generated always as (left(a,5)) virtual);
 show create table t1;
 Table	Create Table
@@ -973,6 +1029,7 @@ drop table t1;
 set sql_warnings = 0;
 # LENGTH()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b int generated always as (length(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -988,6 +1045,7 @@ drop table t1;
 set sql_warnings = 0;
 # LIKE
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b bool generated always as (a like 'H%o') virtual);
 show create table t1;
 Table	Create Table
@@ -1005,6 +1063,7 @@ drop table t1;
 set sql_warnings = 0;
 # LOCATE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (locate('bar',a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1020,6 +1079,7 @@ drop table t1;
 set sql_warnings = 0;
 # LOWER()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (lower(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1035,6 +1095,7 @@ drop table t1;
 set sql_warnings = 0;
 # LPAD()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (lpad(a,4,' ')) virtual);
 show create table t1;
 Table	Create Table
@@ -1052,6 +1113,7 @@ drop table t1;
 set sql_warnings = 0;
 # LTRIM()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (ltrim(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1069,6 +1131,7 @@ drop table t1;
 set sql_warnings = 0;
 # MAKE_SET()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c int, d varchar(30) generated always as (make_set(c,a,b)) virtual);
 show create table t1;
 Table	Create Table
@@ -1088,6 +1151,7 @@ drop table t1;
 set sql_warnings = 0;
 # MID()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (mid(a,1,2)) virtual);
 show create table t1;
 Table	Create Table
@@ -1103,6 +1167,7 @@ drop table t1;
 set sql_warnings = 0;
 # NOT LIKE
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b bool generated always as (a not like 'H%o') virtual);
 show create table t1;
 Table	Create Table
@@ -1120,6 +1185,7 @@ drop table t1;
 set sql_warnings = 0;
 # NOT REGEXP
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b bool generated always as (a not regexp 'H.+o') virtual);
 show create table t1;
 Table	Create Table
@@ -1137,6 +1203,7 @@ drop table t1;
 set sql_warnings = 0;
 # OCTET_LENGTH()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b int generated always as (octet_length(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1152,6 +1219,7 @@ drop table t1;
 set sql_warnings = 0;
 # ORD()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b bigint generated always as (ord(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1167,6 +1235,7 @@ drop table t1;
 set sql_warnings = 0;
 # POSITION()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (position('bar' in a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1182,6 +1251,7 @@ drop table t1;
 set sql_warnings = 0;
 # QUOTE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (quote(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1197,6 +1267,7 @@ drop table t1;
 set sql_warnings = 0;
 # REGEXP()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b bool generated always as (a regexp 'H.+o') virtual);
 show create table t1;
 Table	Create Table
@@ -1214,6 +1285,7 @@ drop table t1;
 set sql_warnings = 0;
 # REPEAT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(30) generated always as (repeat(a,3)) virtual);
 show create table t1;
 Table	Create Table
@@ -1229,6 +1301,7 @@ drop table t1;
 set sql_warnings = 0;
 # REPLACE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(30) generated always as (replace(a,'aa','bb')) virtual);
 show create table t1;
 Table	Create Table
@@ -1244,6 +1317,7 @@ drop table t1;
 set sql_warnings = 0;
 # REVERSE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(30) generated always as (reverse(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1259,6 +1333,7 @@ drop table t1;
 set sql_warnings = 0;
 # RIGHT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (right(a,4)) virtual);
 show create table t1;
 Table	Create Table
@@ -1274,6 +1349,7 @@ drop table t1;
 set sql_warnings = 0;
 # RLIKE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b bool generated always as (a rlike 'H.+o') virtual);
 show create table t1;
 Table	Create Table
@@ -1291,6 +1367,7 @@ drop table t1;
 set sql_warnings = 0;
 # RPAD()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (rpad(a,4,'??')) virtual);
 show create table t1;
 Table	Create Table
@@ -1306,6 +1383,7 @@ drop table t1;
 set sql_warnings = 0;
 # RTRIM();
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (rtrim(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1321,6 +1399,7 @@ drop table t1;
 set sql_warnings = 0;
 # SOUNDEX()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(20) generated always as (soundex(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1336,6 +1415,7 @@ drop table t1;
 set sql_warnings = 0;
 # SOUNDS LIKE
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c bool generated always as (a sounds like b) virtual);
 show create table t1;
 Table	Create Table
@@ -1356,6 +1436,7 @@ drop table t1;
 set sql_warnings = 0;
 # SPACE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(5), b varchar(10) generated always as (concat(a,space(5))) virtual);
 show create table t1;
 Table	Create Table
@@ -1371,6 +1452,7 @@ drop table t1;
 set sql_warnings = 0;
 # STRCMP()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(9), b varchar(9), c tinyint(1) generated always as (strcmp(a,b)) virtual);
 show create table t1;
 Table	Create Table
@@ -1389,6 +1471,7 @@ drop table t1;
 set sql_warnings = 0;
 # SUBSTR()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(5), b varchar(10) generated always as (substr(a,2)) virtual);
 show create table t1;
 Table	Create Table
@@ -1404,6 +1487,7 @@ drop table t1;
 set sql_warnings = 0;
 # SUBSTRING_INDEX()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(15), b varchar(10) generated always as (substring_index(a,'.',2)) virtual);
 show create table t1;
 Table	Create Table
@@ -1419,6 +1503,7 @@ drop table t1;
 set sql_warnings = 0;
 # SUBSTRING()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(5), b varchar(10) generated always as (substring(a from 2 for 2)) virtual);
 show create table t1;
 Table	Create Table
@@ -1434,6 +1519,7 @@ drop table t1;
 set sql_warnings = 0;
 # TRIM()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(15), b varchar(10) generated always as (trim(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1449,6 +1535,7 @@ drop table t1;
 set sql_warnings = 0;
 # UCASE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(5), b varchar(10) generated always as (ucase(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1464,6 +1551,7 @@ drop table t1;
 set sql_warnings = 0;
 # UNHEX()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(15), b varchar(10) generated always as (unhex(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1479,6 +1567,7 @@ drop table t1;
 set sql_warnings = 0;
 # UPPER()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(5), b varchar(10) generated always as (upper(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -1494,6 +1583,7 @@ drop table t1;
 set sql_warnings = 0;
 # WEIGHT_STRING()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(5), b varchar(10) generated always as (weight_string(a as char(4))) virtual);
 show create table t1;
 Table	Create Table
@@ -1512,6 +1602,7 @@ set sql_warnings = 0;
 #
 # CASE
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(16) generated always as (case a when NULL then 'asd' when 'b' then 'B' else a end) virtual);
 show create table t1;
 Table	Create Table
@@ -1531,6 +1622,7 @@ drop table t1;
 set sql_warnings = 0;
 # IF
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int, c int generated always as (if(a=1,a,b)) virtual);
 show create table t1;
 Table	Create Table
@@ -1549,6 +1641,7 @@ drop table t1;
 set sql_warnings = 0;
 # IFNULL
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c varchar(10) generated always as (ifnull(a,'DEFAULT')) virtual);
 show create table t1;
 Table	Create Table
@@ -1567,6 +1660,7 @@ drop table t1;
 set sql_warnings = 0;
 # NULLIF
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10) generated always as (nullif(a,'DEFAULT')) virtual);
 show create table t1;
 Table	Create Table
@@ -1587,6 +1681,7 @@ set sql_warnings = 0;
 #
 # AND, &&
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b bool generated always as (a>0 && a<2) virtual);
 show create table t1;
 Table	Create Table
@@ -1604,6 +1699,7 @@ drop table t1;
 set sql_warnings = 0;
 # BETWEEN ... AND ...
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b bool generated always as (a between 0 and 2) virtual);
 show create table t1;
 Table	Create Table
@@ -1621,6 +1717,7 @@ drop table t1;
 set sql_warnings = 0;
 # BINARY
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varbinary(10) generated always as (binary a) virtual);
 show create table t1;
 Table	Create Table
@@ -1638,6 +1735,7 @@ drop table t1;
 set sql_warnings = 0;
 # &
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (a & 5) virtual);
 show create table t1;
 Table	Create Table
@@ -1655,6 +1753,7 @@ drop table t1;
 set sql_warnings = 0;
 # ~
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (~a) virtual);
 show create table t1;
 Table	Create Table
@@ -1672,6 +1771,7 @@ drop table t1;
 set sql_warnings = 0;
 # |
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (a | 5) virtual);
 show create table t1;
 Table	Create Table
@@ -1691,6 +1791,7 @@ drop table t1;
 set sql_warnings = 0;
 # ^
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (a ^ 5) virtual);
 show create table t1;
 Table	Create Table
@@ -1710,6 +1811,7 @@ drop table t1;
 set sql_warnings = 0;
 # DIV
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (a div 5) virtual);
 show create table t1;
 Table	Create Table
@@ -1727,6 +1829,7 @@ drop table t1;
 set sql_warnings = 0;
 # <=>
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int, c bool generated always as (a <=> b) virtual);
 show create table t1;
 Table	Create Table
@@ -1747,6 +1850,7 @@ drop table t1;
 set sql_warnings = 0;
 # =
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c bool generated always as (a=b) virtual);
 show create table t1;
 Table	Create Table
@@ -1765,6 +1869,7 @@ drop table t1;
 set sql_warnings = 0;
 # >=
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c bool generated always as (a >= b) virtual);
 show create table t1;
 Table	Create Table
@@ -1783,6 +1888,7 @@ drop table t1;
 set sql_warnings = 0;
 # >
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c bool generated always as (a > b) virtual);
 show create table t1;
 Table	Create Table
@@ -1801,6 +1907,7 @@ drop table t1;
 set sql_warnings = 0;
 # IS NOT NULL
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b bool generated always as (a is not null) virtual);
 show create table t1;
 Table	Create Table
@@ -1818,6 +1925,7 @@ drop table t1;
 set sql_warnings = 0;
 # IS NULL
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b bool generated always as (a is null) virtual);
 show create table t1;
 Table	Create Table
@@ -1835,6 +1943,7 @@ drop table t1;
 set sql_warnings = 0;
 # <<
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (a << 2) virtual);
 show create table t1;
 Table	Create Table
@@ -1852,6 +1961,7 @@ drop table t1;
 set sql_warnings = 0;
 # <=
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c bool generated always as (a <= b) virtual);
 show create table t1;
 Table	Create Table
@@ -1872,6 +1982,7 @@ drop table t1;
 set sql_warnings = 0;
 # <
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c bool generated always as (a < b) virtual);
 show create table t1;
 Table	Create Table
@@ -1892,6 +2003,7 @@ drop table t1;
 set sql_warnings = 0;
 # NOT BETWEEN ... AND ...
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b bool generated always as (a not between 0 and 2) virtual);
 show create table t1;
 Table	Create Table
@@ -1909,6 +2021,7 @@ drop table t1;
 set sql_warnings = 0;
 # <>
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c bool generated always as (a <> b) virtual);
 show create table t1;
 Table	Create Table
@@ -1929,6 +2042,7 @@ drop table t1;
 set sql_warnings = 0;
 # !=
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(10), b varchar(10), c bool generated always as (a != b) virtual);
 show create table t1;
 Table	Create Table
@@ -1949,6 +2063,7 @@ drop table t1;
 set sql_warnings = 0;
 # ||, OR
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (a>5 || a<3) virtual);
 show create table t1;
 Table	Create Table
@@ -1966,6 +2081,7 @@ drop table t1;
 set sql_warnings = 0;
 # >>
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (a >> 2) virtual);
 show create table t1;
 Table	Create Table
@@ -1983,6 +2099,7 @@ drop table t1;
 set sql_warnings = 0;
 # XOR
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (a xor 5) virtual);
 show create table t1;
 Table	Create Table
@@ -2005,6 +2122,7 @@ set sql_warnings = 0;
 #
 # ADDDATE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b datetime generated always as (adddate(a,interval 1 month)) virtual);
 show create table t1;
 Table	Create Table
@@ -2020,6 +2138,7 @@ drop table t1;
 set sql_warnings = 0;
 # ADDTIME()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b datetime generated always as (addtime(a,'02:00:00')) virtual);
 show create table t1;
 Table	Create Table
@@ -2035,6 +2154,7 @@ drop table t1;
 set sql_warnings = 0;
 # CONVERT_TZ()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b datetime generated always as (convert_tz(a,'MET','UTC')) virtual);
 show create table t1;
 Table	Create Table
@@ -2050,6 +2170,7 @@ drop table t1;
 set sql_warnings = 0;
 # DATE_ADD()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b datetime generated always as (date_add(a,interval 1 month)) virtual);
 show create table t1;
 Table	Create Table
@@ -2065,6 +2186,7 @@ drop table t1;
 set sql_warnings = 0;
 # DATE_FORMAT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b varchar(64) generated always as (date_format(a,'%W %M %D')) virtual);
 show create table t1;
 Table	Create Table
@@ -2080,6 +2202,7 @@ drop table t1;
 set sql_warnings = 0;
 # DATE_SUB()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b datetime generated always as (date_sub(a,interval 1 month)) virtual);
 show create table t1;
 Table	Create Table
@@ -2095,6 +2218,7 @@ drop table t1;
 set sql_warnings = 0;
 # DATE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b datetime generated always as (date(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2110,6 +2234,7 @@ drop table t1;
 set sql_warnings = 0;
 # DATEDIFF()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b bigint generated always as (datediff(a,'2000-01-01')) virtual);
 show create table t1;
 Table	Create Table
@@ -2125,6 +2250,7 @@ drop table t1;
 set sql_warnings = 0;
 # DAY()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (day(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2140,6 +2266,7 @@ drop table t1;
 set sql_warnings = 0;
 # DAYNAME()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b varchar(10) generated always as (dayname(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2155,6 +2282,7 @@ drop table t1;
 set sql_warnings = 0;
 # DAYOFMONTH()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (dayofmonth(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2170,6 +2298,7 @@ drop table t1;
 set sql_warnings = 0;
 # DAYOFWEEK()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (dayofweek(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2185,6 +2314,7 @@ drop table t1;
 set sql_warnings = 0;
 # DAYOFYEAR()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (dayofyear(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2200,6 +2330,7 @@ drop table t1;
 set sql_warnings = 0;
 # EXTRACT
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (extract(year from a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2215,6 +2346,7 @@ drop table t1;
 set sql_warnings = 0;
 # FROM_DAYS()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a bigint, b datetime generated always as (from_days(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2230,6 +2362,7 @@ drop table t1;
 set sql_warnings = 0;
 # FROM_UNIXTIME()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a bigint, b datetime generated always as (from_unixtime(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2245,6 +2378,7 @@ drop table t1;
 set sql_warnings = 0;
 # GET_FORMAT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b varchar(32) generated always as (date_format(a,get_format(DATE,'EUR'))) virtual);
 show create table t1;
 Table	Create Table
@@ -2260,6 +2394,7 @@ drop table t1;
 set sql_warnings = 0;
 # HOUR()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a time, b bigint generated always as (hour(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2276,6 +2411,7 @@ set sql_warnings = 0;
 # LAST_DAY()
 set sql_mode = 'NO_ENGINE_SUBSTITUTION';
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b datetime generated always as (last_day(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2296,6 +2432,7 @@ set sql_warnings = 0;
 set sql_mode = DEFAULT;
 # MAKEDATE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b datetime generated always as (makedate(a,1)) virtual);
 show create table t1;
 Table	Create Table
@@ -2311,6 +2448,7 @@ drop table t1;
 set sql_warnings = 0;
 # MAKETIME()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b time generated always as (maketime(a,1,3)) virtual);
 show create table t1;
 Table	Create Table
@@ -2326,6 +2464,7 @@ drop table t1;
 set sql_warnings = 0;
 # MICROSECOND()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b bigint generated always as (microsecond(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2343,6 +2482,7 @@ drop table t1;
 set sql_warnings = 0;
 # MINUTE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (minute(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2358,6 +2498,7 @@ drop table t1;
 set sql_warnings = 0;
 # MONTH()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (month(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2373,6 +2514,7 @@ drop table t1;
 set sql_warnings = 0;
 # MONTHNAME()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b varchar(16) generated always as (monthname(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2388,6 +2530,7 @@ drop table t1;
 set sql_warnings = 0;
 # PERIOD_ADD()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (period_add(a,2)) virtual);
 show create table t1;
 Table	Create Table
@@ -2403,6 +2546,7 @@ drop table t1;
 set sql_warnings = 0;
 # PERIOD_DIFF()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int, c int generated always as (period_diff(a,b)) virtual);
 show create table t1;
 Table	Create Table
@@ -2419,6 +2563,7 @@ drop table t1;
 set sql_warnings = 0;
 # QUARTER()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (quarter(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2434,6 +2579,7 @@ drop table t1;
 set sql_warnings = 0;
 # SEC_TO_TIME()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a bigint, b time generated always as (sec_to_time(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2449,6 +2595,7 @@ drop table t1;
 set sql_warnings = 0;
 # SECOND()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (second(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2464,6 +2611,7 @@ drop table t1;
 set sql_warnings = 0;
 # STR_TO_DATE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(64), b datetime generated always as (str_to_date(a,'%m/%d/%Y')) virtual);
 show create table t1;
 Table	Create Table
@@ -2479,6 +2627,7 @@ drop table t1;
 set sql_warnings = 0;
 # SUBDATE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b datetime generated always as (subdate(a,interval 1 month)) virtual);
 show create table t1;
 Table	Create Table
@@ -2494,6 +2643,7 @@ drop table t1;
 set sql_warnings = 0;
 # SUBTIME()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b datetime generated always as (subtime(a,'02:00:00')) virtual);
 show create table t1;
 Table	Create Table
@@ -2509,6 +2659,7 @@ drop table t1;
 set sql_warnings = 0;
 # TIME_FORMAT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b varchar(32) generated always as (time_format(a,'%r')) virtual);
 show create table t1;
 Table	Create Table
@@ -2524,6 +2675,7 @@ drop table t1;
 set sql_warnings = 0;
 # TIME_TO_SEC()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a time, b bigint generated always as (time_to_sec(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2539,6 +2691,7 @@ drop table t1;
 set sql_warnings = 0;
 # TIME()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b time generated always as (time(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2555,6 +2708,7 @@ set sql_warnings = 0;
 # TIMEDIFF()
 set sql_mode = 'NO_ENGINE_SUBSTITUTION';
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b datetime, c time generated always as (timediff(a,b)) virtual);
 show create table t1;
 Table	Create Table
@@ -2572,6 +2726,7 @@ set sql_warnings = 0;
 set sql_mode = DEFAULT;
 # TIMESTAMP()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b timestamp generated always as (timestamp(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2587,6 +2742,7 @@ drop table t1;
 set sql_warnings = 0;
 # TIMESTAMPADD()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b timestamp generated always as (timestampadd(minute,1,a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2602,6 +2758,7 @@ drop table t1;
 set sql_warnings = 0;
 # TIMESTAMPDIFF()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a timestamp, c bigint generated always as (timestampdiff(MONTH, a, a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2617,6 +2774,7 @@ drop table t1;
 set sql_warnings = 0;
 # TO_DAYS()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b bigint generated always as (to_days(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2632,6 +2790,7 @@ drop table t1;
 set sql_warnings = 0;
 # WEEK()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (week(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2647,6 +2806,7 @@ drop table t1;
 set sql_warnings = 0;
 # WEEKDAY()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (weekday(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2662,6 +2822,7 @@ drop table t1;
 set sql_warnings = 0;
 # WEEKOFYEAR()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (weekofyear(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2677,6 +2838,7 @@ drop table t1;
 set sql_warnings = 0;
 # YEAR()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (year(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2692,6 +2854,7 @@ drop table t1;
 set sql_warnings = 0;
 # YEARWEEK()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a datetime, b int generated always as (yearweek(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2714,6 +2877,7 @@ set sql_warnings = 0;
 #
 # CAST()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b bigint unsigned generated always as (cast(a as unsigned)) virtual);
 show create table t1;
 Table	Create Table
@@ -2735,6 +2899,7 @@ drop table t1;
 set sql_warnings = 0;
 # Convert()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b bigint unsigned generated always as (convert(a,unsigned)) virtual);
 show create table t1;
 Table	Create Table
@@ -2759,6 +2924,7 @@ set sql_warnings = 0;
 #
 # ExtractValue()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b varchar(1024) generated always as (ExtractValue(a,'/b')) virtual);
 show create table t1;
 Table	Create Table
@@ -2778,6 +2944,7 @@ set sql_warnings = 0;
 #
 # AES_DECRYPT(), AES_ENCRYPT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b varchar(1024) generated always as (aes_encrypt(aes_decrypt(a,'adf'),'adf')) virtual);
 show create table t1;
 Table	Create Table
@@ -2793,6 +2960,7 @@ drop table t1;
 set sql_warnings = 0;
 # BIT_COUNT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b int generated always as (bit_count(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2808,6 +2976,7 @@ drop table t1;
 set sql_warnings = 0;
 # CHARSET()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b varchar(1024) generated always as (charset(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2823,6 +2992,7 @@ drop table t1;
 set sql_warnings = 0;
 # COERCIBILITY()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b int generated always as (coercibility(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2838,6 +3008,7 @@ drop table t1;
 set sql_warnings = 0;
 # COLLATION()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b varchar(1024) generated always as (collation(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2853,6 +3024,7 @@ drop table t1;
 set sql_warnings = 0;
 # COMPRESS(), UNCOMPRESS()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b varchar(1024) generated always as (uncompress(compress(a))) virtual);
 show create table t1;
 Table	Create Table
@@ -2868,6 +3040,7 @@ drop table t1;
 set sql_warnings = 0;
 # ENCODE(), DECODE()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b varchar(1024) generated always as (decode(encode(a,'abc'),'abc')) virtual);
 show create table t1;
 Table	Create Table
@@ -2883,6 +3056,7 @@ drop table t1;
 set sql_warnings = 0;
 # DEFAULT()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024) default 'aaa', b varchar(1024) generated always as (ifnull(a,default(a))) virtual);
 show create table t1;
 Table	Create Table
@@ -2912,6 +3086,7 @@ MySQL	ÿw2¥ð
 drop table t1;
 # INET_ATON(), INET_NTOA()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b varchar(1024) generated always as (inet_ntoa(inet_aton(a))) virtual);
 show create table t1;
 Table	Create Table
@@ -2927,6 +3102,7 @@ drop table t1;
 set sql_warnings = 0;
 # MD5()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b varbinary(32) generated always as (md5(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2942,6 +3118,7 @@ drop table t1;
 set sql_warnings = 0;
 # PASSWORD()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b varchar(1024) generated always as (password(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2957,6 +3134,7 @@ drop table t1;
 set sql_warnings = 0;
 # SHA1()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b varchar(1024) generated always as (sha1(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2972,6 +3150,7 @@ drop table t1;
 set sql_warnings = 0;
 # SHA()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b varchar(1024) generated always as (sha(a)) virtual);
 show create table t1;
 Table	Create Table
@@ -2987,6 +3166,7 @@ drop table t1;
 set sql_warnings = 0;
 # SHA2()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a varchar(1024), b varchar(1024) generated always as (sha2(a,224)) virtual);
 show create table t1;
 Table	Create Table
@@ -3002,6 +3182,7 @@ drop table t1;
 set sql_warnings = 0;
 # UNCOMPRESSED_LENGTH()
 set sql_warnings = 1;
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a char, b varchar(1024) generated always as (uncompressed_length(compress(repeat(a,30)))) virtual);
 show create table t1;
 Table	Create Table

@@ -503,6 +503,7 @@ set sql_mode= @save_old_sql_mode;
 
 --echo # Bug#21875520 Problems with virtual column indexes
 
+SET STATEMENT sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' FOR
 CREATE TABLE t(
   a TIMESTAMP,
   b BLOB,

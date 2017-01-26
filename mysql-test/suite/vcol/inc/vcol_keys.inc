@@ -163,6 +163,7 @@ drop table t1;
 
 --error ER_GENERATED_COLUMN_FUNCTION_IS_NOT_ALLOWED
 create table t1 (a int, b timestamp as (now()), key (b));
+set statement sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' for
 create table t1 (a int, b timestamp as (now()));
 --error ER_GENERATED_COLUMN_FUNCTION_IS_NOT_ALLOWED
 alter table t1 add index (b);

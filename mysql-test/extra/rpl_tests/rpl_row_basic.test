@@ -497,7 +497,8 @@ sync_slave_with_master;
 --disable_warnings
 DROP TABLE IF EXISTS t1, t2;
 --enable_warnings
-
+# Unset NO_ZERO modes, otherwise the test does not make sense
+SET SQL_MODE='NO_ENGINE_SUBSTITUTION';
 eval CREATE TABLE t1 (
   `pk` int(11) NOT NULL AUTO_INCREMENT,
   `int_nokey` int(11) NOT NULL,
@@ -560,6 +561,7 @@ source include/diff_tables.inc;
 
 --connection master
 DROP TABLE t1, t2;
+SET SQL_MODE=DEFAULT;
 
 --enable_abort_on_error
 
